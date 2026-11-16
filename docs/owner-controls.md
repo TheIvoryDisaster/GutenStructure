@@ -1,15 +1,9 @@
-# Personal approval controls
+# Personal owner controls
 
-Only TheIvoryDisaster was a repository administrator at inspection. Other organization owners have no inherited access to this personal repository.
+GutenStructure is owned by TheIvoryDisaster and is an explicit exception to the organization review policy. Require pull requests and passing CI on main, beta and release, with **zero required reviewers** and **no mandatory code-owner approval**. Keep force pushes/deletion blocked and bypass actors empty. The owner remains the sole administrator; organization owners inherit no access here.
 
-GitHub prevents an author from approving their own PR. Changes created through the current connection are authored by TheIvoryDisaster. The proposed ruleset therefore allows **repository administrators to bypass only through a pull request**: with the owner as the only administrator, the owner can explicitly merge their own reviewed changes. Collaborators must not receive administrator access. Require the owner's CODEOWNER approval for collaborator changes; dismiss stale approvals and require the Terraform check.
+Agents may validate and merge routine changes through conceptually grouped PRs. GitHub cannot record formal author self-approval. Changes needing the owner's personal testing target beta and wait for feedback before promotion to main or release. This exception does not apply to any repository in Meitou-Modding-Ecosystem: their main/release branches require two approvals including a code owner.
 
-The connection currently receives HTTP 403 when creating rulesets or accessing Actions administration. No ruleset was installed. The owner can apply the reviewable configuration from a CLI authenticated with repository administration permission:
+The connector cannot administer rulesets. Apply the reviewed JSON in `docs/owner-controls.json` through GitHub's ruleset import UI, or use Configure release branch protections with target personal and a separately scoped `GUTENSTRUCTURE_ADMIN_TOKEN` in the Default environment. Do not reuse the organization administration credential for personally owned infrastructure.
 
-```sh
-gh api repos/TheIvoryDisaster/GutenStructure/rulesets --method POST --input docs/owner-controls.json
-```
-
-Apply once; for later edits update the existing ruleset ID rather than creating duplicates. Inspect the displayed rules and confirm the required check name after the first CI run. Repository administrators can ultimately change these controls. The personal account owner remains the authority; do not give organization authors administrative rights here.
-
-Use read-only default workflow tokens, disable Actions-created PR approvals, and restrict allowed actions to reviewed dependencies. CODEOWNERS alone requests review and does not enforce it. Enable secret scanning and push protection where available. Plan/state/log confidentiality remains a separate concern.
+Keep Default environment secrets restricted to reviewed main/release branches before granting anyone collaborator write access. Do not expose them to pull-request code or arbitrary feature branches. Use read-only default workflow tokens, disable Actions-created approvals, and retain secret scanning/push protection where available. CODEOWNERS remains ownership documentation; it does not impose a review requirement in this personal exception.
