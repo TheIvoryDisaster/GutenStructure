@@ -1,0 +1,43 @@
+name: Reusable UI compatibility build
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUi' || github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUiProbe'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out UI source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: Meitou-Modding-Ecosystem/PZAMeitouUi
+          ref: ${{ github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUi' && github.sha || '54f670ba5b21fe7deff77b48abc2c66682fb6553' }}
+          path: PZAMeitouUi
+          persist-credentials: false
+      - name: Check out probe
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: Meitou-Modding-Ecosystem/PZAMeitouUiProbe
+          ref: ${{ github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUiProbe' && github.sha || 'ba87396ffb80398689c58e25fd41d78e7ce2d014' }}
+          path: PZAMeitouUiProbe
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 11.0.x
+      - name: Fetch verified engine reference and compile probe with UI source
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $env:RUNNER_TEMP 'Meitou-0.20.1-win-x64.zip'
+          Invoke-WebRequest 'https://github.com/VlcekM/MeitouClient/releases/download/v0.20.1/Meitou-0.20.1-win-x64.zip' -OutFile $zip
+          $expected = 'ea090b02f48bddcc11998c7f2ac7a75fe71a42d15bb691953d32132dbce9a820'
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Engine release checksum mismatch' }
+          $out = Join-Path $env:RUNNER_TEMP 'meitou-reference'
+          Expand-Archive $zip -DestinationPath $out
+          $dlls = @(Get-ChildItem $out -Recurse -Filter MeitouClient.dll)
+          if ($dlls.Count -ne 1) { throw 'Expected exactly one MeitouClient.dll' }
+          & ./PZAMeitouUiProbe/mod/build.ps1 -MeitouDir $dlls[0].DirectoryName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          'Compile compatibility passed. Kenshi-resource integration checks were not run.' >> $env:GITHUB_STEP_SUMMARY

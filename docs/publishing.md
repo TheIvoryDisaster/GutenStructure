@@ -14,7 +14,7 @@ Build outputs are data. Privileged jobs must not execute caller scripts, restore
 
 Subscription: Mattaclysm's Test Space. Resource group `github`; shared StorageV2 Standard_LRS account `gutenhub`. Shared keys and public blob access disabled; HTTPS and TLS 1.2 required. Meitou identity `meitouclient-debug-upload` has container-scoped Blob Data Contributor on `meitouclient-debug`, with branch-only federation for the fork. Lifecycle deletion is three days; blob soft delete is disabled. This account also serves unrelated projects; never replace its whole lifecycle policy casually.
 
-Control-plane inspection succeeded. This workspace's proxy denied access to `gutenhub.blob.core.windows.net`; current data-plane access remains unverified. Do not change Azure networking to work around a workspace proxy restriction.
+Control-plane inspection succeeded. This workspace's proxy denied access to `gutenhub.blob.core.windows.net`; the existing upload check subsequently succeeded from GitHub Actions on `fork` (run 43912337705). OIDC and upload access are verified from that runner; read-back, cleanup and cross-container denial remain unverified. Do not change Azure networking to work around a workspace proxy restriction.
 
 ## Implementation gates
 

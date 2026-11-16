@@ -19,6 +19,6 @@ Publishing is intentionally unavailable until centrally enforced identity and qu
 
 ## Owner controls
 
-`CODEOWNERS` requests review; it does not enforce approval. Before accepting callers, configure a main-branch ruleset requiring @TheIvoryDisaster's code-owner approval, dismissing stale reviews, blocking force pushes/deletion, and requiring CI, with no collaborator bypass. Keep repository administration and Azure federation/RBAC administration under personal control. Review repository Actions defaults and third-party action permissions.
+`CODEOWNERS` requests review; it does not enforce approval. Before enabling Azure publishing, apply the [owner controls](docs/owner-controls.md): require owner review for collaborator changes, block force pushes/deletion, and require CI. Only the personal owner should retain administration. Keep repository administration and Azure federation/RBAC administration under personal control. Review repository Actions defaults and third-party action permissions.
 
 Do not commit credentials, state, saved plans or sensitive infrastructure output. Terraform state belongs in a private backend.

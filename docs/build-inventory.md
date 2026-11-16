@@ -14,3 +14,5 @@ Initial inspection: 2026-11-16. Recheck manifests before enabling each caller.
 Do not treat a skipped asset-dependent test as a verified integration build. Separate required engine-free checks from optional integration jobs. Never upload proprietary Kenshi resources to public artifacts or caches.
 
 Roll out one repository at a time, preserving existing required check names until branch rules are migrated. Pin central workflows to reviewed commits. Cancel superseded PR builds and avoid packaging on documentation-only changes where the dependency graph permits it.
+
+UI compile checks use the published Meitou 0.20.1 Windows release pinned by SHA-256, with companion source pinned by commit. They run without Kenshi assets. They do not claim to verify in-game behavior or the asset-dependent offline integration check.
