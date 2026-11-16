@@ -14,6 +14,7 @@ concurrency:
 jobs:
   sync:
     if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    environment: Default
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
