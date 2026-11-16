@@ -1,5 +1,7 @@
 name: Configure release branch protections
 on:
+  schedule:
+    - cron: "17 6 * * *"
   workflow_dispatch:
     inputs:
       target:
@@ -19,6 +21,7 @@ concurrency:
 jobs:
   configure:
     if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    environment: Default
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,10 +29,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Configure organization repository protections
-        if: inputs.target == 'organization'
+        if: github.event_name == 'schedule' || inputs.target == 'organization'
         env:
           RELEASE_ADMIN_TOKEN: ${{ secrets.MEITOU_RELEASE_ADMIN_TOKEN }}
-          APPLY: ${{ inputs.apply }}
+          APPLY: ${{ github.event_name == 'schedule' && 'true' || inputs.apply }}
         run: |
           args=()
           if [ "$APPLY" = true ]; then args+=(--apply); fi

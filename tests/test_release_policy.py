@@ -48,3 +48,65 @@ class ReleasePolicyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FuturePolicyTests(unittest.TestCase):
+    def fake(self, existing=None, missing_future_branch=True):
+        import base64
+        from scripts.apply_release_policy import GitHubFailure
+        mutations = []
+        def api(path, method="GET", body=None):
+            if method != "GET":
+                mutations.append((path, method, body))
+                return {"id": 1}
+            if path == "orgs/Meitou-Modding-Ecosystem":
+                return {"id": 357134506}
+            if "/repos?" in path:
+                return [{"full_name": "Meitou-Modding-Ecosystem/NewMod", "default_branch": "main",
+                         "private": False, "owner": {"id": 357134506}}]
+            if "/branches/" in path:
+                if "NewMod" in path and missing_future_branch:
+                    raise GitHubFailure(404)
+                return {"commit": {"sha": "sha"}}
+            if "/contents/" in path:
+                return {"content": base64.b64encode(b"* @Meitou-Modding-Ecosystem/maintainers\n").decode()}
+            if "/rulesets?" in path:
+                return [{"id": 1, "name": "Release promotion"}] if existing else []
+            if "/rulesets/1" in path:
+                return existing
+            raise AssertionError(path)
+        return api, mutations
+
+    def test_future_public_repository_gets_policy_and_incomplete_setup_report(self):
+        from scripts.apply_release_policy import synchronize
+        plan = {"branch": "release", "repositories": [], "reconcile_future_public_repositories": True}
+        api, mutations = self.fake()
+        report = synchronize(api, plan, "Meitou-Modding-Ecosystem", apply=True)
+        self.assertEqual(len(mutations), 1)
+        self.assertEqual(report[0]["repository"], "Meitou-Modding-Ecosystem/NewMod")
+        self.assertIn("release branch", report[0]["setup_required"])
+        self.assertIn("fallback CODEOWNERS entry", report[0]["setup_required"])
+        self.assertEqual(mutations[0][2]["bypass_actors"], [])
+
+    def test_unchanged_daily_reconciliation_makes_no_writes(self):
+        from scripts.apply_release_policy import synchronize
+        current = desired_ruleset(["Release readiness"])
+        api, mutations = self.fake(existing=current, missing_future_branch=False)
+        report = synchronize(api, {"branch": "release", "repositories": [], "reconcile_future_public_repositories": True},
+                             "Meitou-Modding-Ecosystem", apply=True)
+        self.assertEqual(report[0]["action"], "unchanged")
+        self.assertEqual(mutations, [])
+
+    def test_preview_and_wrong_org_never_mutate(self):
+        from scripts.apply_release_policy import synchronize
+        api, mutations = self.fake()
+        plan = {"branch": "release", "repositories": [], "reconcile_future_public_repositories": True}
+        synchronize(api, plan, "Meitou-Modding-Ecosystem", apply=False)
+        self.assertEqual(mutations, [])
+        def wrong(path, **kwargs):
+            if path.startswith("orgs/"):
+                return {"id": 999}
+            return api(path, **kwargs)
+        with self.assertRaises(ValueError):
+            synchronize(wrong, plan, "Meitou-Modding-Ecosystem", apply=True)
+        self.assertEqual(mutations, [])

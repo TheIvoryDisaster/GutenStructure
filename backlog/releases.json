@@ -1,12 +1,57 @@
 {
   "branch": "release",
   "repositories": [
-    {"repository": "Meitou-Modding-Ecosystem/MeitouClient", "source": "fork", "checks": ["build / build"]},
-    {"repository": "Meitou-Modding-Ecosystem/MeitouMods", "source": "main", "checks": ["build / build"]},
-    {"repository": "Meitou-Modding-Ecosystem/PZAKenshiMotionLab", "source": "master", "checks": ["build / build"]},
-    {"repository": "Meitou-Modding-Ecosystem/TheWastelandRemembers", "source": "main", "checks": ["rules / build", "python / build"]},
-    {"repository": "Meitou-Modding-Ecosystem/PZAMeitouUi", "source": "master", "checks": ["compatibility / build"]},
-    {"repository": "Meitou-Modding-Ecosystem/PZAMeitouUiProbe", "source": "master", "checks": ["compatibility / build"]},
-    {"repository": "TheIvoryDisaster/GutenStructure", "source": "main", "checks": ["terraform", "automation"]}
-  ]
+    {
+      "repository": "Meitou-Modding-Ecosystem/MeitouClient",
+      "source": "fork",
+      "checks": [
+        "build / build"
+      ]
+    },
+    {
+      "repository": "Meitou-Modding-Ecosystem/MeitouMods",
+      "source": "main",
+      "checks": [
+        "build / build"
+      ]
+    },
+    {
+      "repository": "Meitou-Modding-Ecosystem/PZAKenshiMotionLab",
+      "source": "master",
+      "checks": [
+        "build / build"
+      ]
+    },
+    {
+      "repository": "Meitou-Modding-Ecosystem/TheWastelandRemembers",
+      "source": "main",
+      "checks": [
+        "rules / build",
+        "python / build"
+      ]
+    },
+    {
+      "repository": "Meitou-Modding-Ecosystem/PZAMeitouUi",
+      "source": "master",
+      "checks": [
+        "compatibility / build"
+      ]
+    },
+    {
+      "repository": "Meitou-Modding-Ecosystem/PZAMeitouUiProbe",
+      "source": "master",
+      "checks": [
+        "compatibility / build"
+      ]
+    },
+    {
+      "repository": "TheIvoryDisaster/GutenStructure",
+      "source": "main",
+      "checks": [
+        "terraform",
+        "automation"
+      ]
+    }
+  ],
+  "reconcile_future_public_repositories": true
 }

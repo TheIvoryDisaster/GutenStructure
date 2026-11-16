@@ -2,11 +2,49 @@
 import argparse
 import base64
 import json
+import copy
 import os
 import urllib.error
 import urllib.request
 from pathlib import Path
-from scripts.release_gate import ALLOWED
+from scripts.release_gate import ALLOWED, allowed_repository
+
+
+class GitHubFailure(RuntimeError):
+    def __init__(self, status):
+        self.status = status
+        super().__init__(f"GitHub returned HTTP {status}; verify administration permission and repository setup")
+
+
+def optional(api, path):
+    try:
+        return api(path)
+    except GitHubFailure as error:
+        if error.status == 404:
+            return None
+        raise
+
+
+def discover_repositories(api, selected):
+    if api("orgs/Meitou-Modding-Ecosystem").get("id") != 357134506:
+        raise ValueError("Organization identity mismatch")
+    known = {item["repository"] for item in selected}
+    result = list(selected)
+    page = 1
+    while True:
+        repositories = api(f"orgs/Meitou-Modding-Ecosystem/repos?type=public&per_page=100&page={page}")
+        for repo in repositories:
+            if repo.get("archived") or repo.get("disabled"):
+                continue
+            if repo.get("private") or repo.get("owner", {}).get("id") != 357134506 or not allowed_repository(repo["full_name"]):
+                raise ValueError("Discovery returned an unexpected owner or private repository")
+            if repo["full_name"] not in known:
+                result.append({"repository": repo["full_name"], "source": repo["default_branch"],
+                               "checks": ["Release readiness"], "discovered": True})
+                known.add(repo["full_name"])
+        if len(repositories) < 100:
+            return result
+        page += 1
 
 
 def desired_ruleset(checks):
@@ -54,16 +92,30 @@ def ensure_not_weaker(existing, desired):
 def synchronize(api, plan, target, apply=False):
     validate_plan(plan)
     selected = [item for item in plan["repositories"] if item["repository"].split("/")[0] == target]
+    if target == "Meitou-Modding-Ecosystem" and plan.get("reconcile_future_public_repositories", False):
+        selected = discover_repositories(api, selected)
     report = []
     # Inspect every selected repository before mutating any.
     prepared = []
     for item in selected:
         repo = item["repository"]
-        api(f"repos/{repo}/branches/release")
-        owners = api(f"repos/{repo}/contents/.github/CODEOWNERS?ref=release")
-        text = base64.b64decode(owners["content"]).decode()
-        if not any(line.strip() and not line.lstrip().startswith("#") and "@" in line for line in text.splitlines()):
-            raise ValueError("Release must contain an active CODEOWNERS file")
+        setup_required = []
+        branch = optional(api, f"repos/{repo}/branches/release")
+        if not branch:
+            setup_required.append("release branch")
+        owners = None
+        if branch:
+            for path in (".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"):
+                owners = optional(api, f"repos/{repo}/contents/{path}?ref=release")
+                if owners:
+                    break
+        text = base64.b64decode(owners["content"]).decode() if owners else ""
+        if not any(len(parts := line.split("#", 1)[0].split()) >= 2 and parts[0] == "*" and any("@" in value for value in parts[1:]) for line in text.splitlines()):
+            setup_required.append("fallback CODEOWNERS entry")
+        if item.get("discovered"):
+            setup_required.append("required Release readiness CI check")
+        # Install the rule even before a future release branch exists. The central
+        # publishing gate separately refuses missing/invalid ownership and CI.
         rulesets = api(f"repos/{repo}/rulesets?includes_parents=false&per_page=100")
         if len(rulesets) >= 100:
             raise ValueError("Refusing an incomplete ruleset inventory")
@@ -74,14 +126,22 @@ def synchronize(api, plan, target, apply=False):
         desired = desired_ruleset(item["checks"])
         if existing:
             ensure_not_weaker(existing, desired)
-        prepared.append((repo, existing, desired))
-    for repo, existing, desired in prepared:
-        if apply:
+            # Preserve supported additional review parameters rather than reset them.
+            old_by_type = {rule["type"]: rule for rule in existing["rules"]}
+            for rule in desired["rules"]:
+                if "parameters" in rule and rule["type"] in old_by_type:
+                    rule["parameters"] = {**old_by_type[rule["type"]].get("parameters", {}), **rule["parameters"]}
+        prepared.append((repo, existing, desired, setup_required))
+    for repo, existing, desired, setup_required in prepared:
+        comparable = None if not existing else {key: existing.get(key) for key in desired}
+        unchanged = comparable is not None and {**comparable, "rules": sorted(comparable["rules"], key=lambda rule: rule["type"])} == {**desired, "rules": sorted(desired["rules"], key=lambda rule: rule["type"])}
+        if apply and not unchanged:
             if existing:
                 api(f"repos/{repo}/rulesets/{existing['id']}", method="PUT", body=desired)
             else:
                 api(f"repos/{repo}/rulesets", method="POST", body=desired)
-        report.append({"repository": repo, "action": "update" if existing else "create", "applied": apply, "policy": desired})
+        report.append({"repository": repo, "action": "unchanged" if unchanged else ("update" if existing else "create"),
+                       "applied": apply and not unchanged, "setup_required": setup_required, "policy": desired})
     return report
 
 
@@ -107,7 +167,7 @@ def main():
             with urllib.request.urlopen(request, timeout=30) as response:
                 return json.load(response)
         except urllib.error.HTTPError as error:
-            raise RuntimeError(f"GitHub returned HTTP {error.code}; verify administration permission and branch setup") from None
+            raise GitHubFailure(error.code) from None
     print(json.dumps(synchronize(api, plan, args.target, args.apply), indent=2))
 
 

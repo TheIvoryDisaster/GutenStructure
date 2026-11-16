@@ -20,3 +20,11 @@ Until that operation succeeds, release branches exist but protection enforcement
 ## Repository rollout
 
 Configuration PRs target release and run CI there. Do not merge release-policy or promotion PRs without the requested two approvals including a code owner, even if a rule has not yet been installed. Engine and mod release workflows retain their packaging/version checks. Repositories without a production packaging workflow get the branch/review policy first; asset-dependent packaging is not replaced with an incomplete artifact. TWR still needs its licensed game-data path before a full content release can be automated.
+
+## Future repositories and changing owners
+
+The review rule uses each repository's native CODEOWNERS file, not a separate reviewer list. Changes to eligible code owners take effect through reviewed file changes; ownership teams follow their current membership. Every path needs a fallback owner entry, and the central gate also checks GitHub's CODEOWNERS errors. No organization-owner role is silently treated as an approval or bypass.
+
+Organization-wide rulesets require GitHub Team or Enterprise. The free-tier fallback discovers current and future **public** repositories under immutable organization ID 357134506 and reconciles per-repository release rules daily. Use All repositories on the scoped organization administration token for future coverage. New repositories require a release branch, valid CODEOWNERS and a passing `Release readiness` check before publishing; missing setup is reported and the production gate blocks. Discovery does not grant Azure access or enable broker publishing. Private future repositories require a separately reviewed private execution path and a GitHub plan supporting their protections; their names/content are not exposed by this public workflow.
+
+The administration job uses the `Default` environment. Enable its scheduled reconciliation only after this workflow has received the requested release-policy reviews. It does not bootstrap unknown source code, invent code owners, or weaken existing stronger rules.

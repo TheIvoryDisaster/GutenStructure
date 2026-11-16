@@ -23,6 +23,8 @@ class ReleaseGateTests(unittest.TestCase):
     def test_other_branches_and_old_release_commits_are_rejected(self):
         repository = "Meitou-Modding-Ecosystem/MeitouClient"
         def api(path):
+            if path.endswith("MeitouClient"):
+                return {"owner": {"id": 357134506}}
             return {"commit": {"sha": "approved"}}
         with self.assertRaises(RuntimeError):
             check(api, repository, "refs/heads/fork", "approved")
@@ -38,3 +40,44 @@ class ReleaseGateTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FutureRepositoryGateTests(unittest.TestCase):
+    def test_new_org_repository_uses_immutable_owner_identity_and_native_codeowners(self):
+        import base64
+        repository = "Meitou-Modding-Ecosystem/NewMod"
+        rule = {"type": "pull_request", "ruleset_id": 1,
+                "parameters": {"required_approving_review_count": 2, "require_code_owner_review": True}}
+        def api(path):
+            if path == "repos/" + repository:
+                return {"owner": {"id": 357134506}}
+            if "/branches/" in path and "/rules/" not in path:
+                return {"commit": {"sha": "approved"}}
+            if "/contents/" in path:
+                return {"content": base64.b64encode(b"* @Meitou-Modding-Ecosystem/maintainers\n").decode()}
+            if "/codeowners/errors" in path:
+                return {"errors": []}
+            if "/rules/branches/" in path:
+                return [rule]
+            return {"enforcement": "active", "bypass_actors": []}
+        check(api, repository, "refs/heads/release", "approved")
+        def wrong_owner(path):
+            if path == "repos/" + repository:
+                return {"owner": {"id": 1}}
+            return api(path)
+        with self.assertRaises(RuntimeError):
+            check(wrong_owner, repository, "refs/heads/release", "approved")
+
+    def test_invalid_or_partial_codeowner_coverage_blocks_release(self):
+        import base64
+        for text, errors in [("/src/ @owner", []), ("* @unknown", [{"kind": "Invalid owner"}])]:
+            def api(path):
+                if path == "repos/Meitou-Modding-Ecosystem/NewMod":
+                    return {"owner": {"id": 357134506}}
+                if "/contents/" in path:
+                    return {"content": base64.b64encode(text.encode()).decode()}
+                if "/codeowners/errors" in path:
+                    return {"errors": errors}
+                return {"commit": {"sha": "approved"}}
+            with self.assertRaises(RuntimeError):
+                check(api, "Meitou-Modding-Ecosystem/NewMod", "refs/heads/release", "approved")
