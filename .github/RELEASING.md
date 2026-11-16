@@ -1,7 +1,7 @@
-# Production releases
+# GutenStructure promotion
 
-Promote reviewed work with a pull request to `release`. It requires two approving reviewers, including an applicable owner from CODEOWNERS. Authors cannot approve their own PRs. Do not push directly or bypass the review requirement.
+Require PRs and passing CI for main, beta and release, with zero required reviewers and no mandatory code-owner review. Agents may validate and merge routine changes through conceptually grouped PRs.
 
-Run production release workflows from the current `release` head. Release tags must point at that same commit. The central gate checks both the head and the actual enforced ruleset; a branch name alone is insufficient. Nightlies remain separate prereleases. Repositories without production packaging retain their build checks until a complete package can be produced.
+Changes requiring the owner’s personal testing target beta and await feedback before promotion to main or release. Production deployment must still use the current release head and the central gate. The owner remains the sole administrator.
 
-Required ruleset setup and owner instructions: https://github.com/TheIvoryDisaster/GutenStructure/blob/main/docs/releases.md . Protection enforcement requires the scoped administration secret; configuration alone does not enable it.
+Organization main/release branches retain two approvals including a code owner; this personal exception does not extend to them. See docs/releases.md and the onboarding skill.

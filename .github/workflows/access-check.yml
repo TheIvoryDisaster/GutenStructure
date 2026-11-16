@@ -1,0 +1,43 @@
+name: Verify scoped administration access
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    environment: Default
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read administration settings without changing them
+        env:
+          ADMIN_TOKEN: ${{ secrets.MEITOU_RELEASE_ADMIN_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, urllib.error
+          token = os.environ.get('ADMIN_TOKEN', '')
+          if not token:
+              raise SystemExit('MEITOU_RELEASE_ADMIN_TOKEN is not available in Default')
+          def get(path):
+              request = urllib.request.Request('https://api.github.com/' + path, headers={
+                  'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json',
+                  'X-GitHub-Api-Version': '2022-11-28'})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  return json.load(response)
+          organization = get('orgs/Meitou-Modding-Ecosystem')
+          if organization['id'] != 357134506:
+              raise SystemExit('Organization identity mismatch')
+          names = ['MeitouClient', 'MeitouMods', 'PZAKenshiMotionLab',
+                   'TheWastelandRemembers', 'PZAMeitouUi', 'PZAMeitouUiProbe']
+          failures = 0
+          for name in names:
+              try:
+                  get('repos/Meitou-Modding-Ecosystem/' + name + '/actions/permissions')
+                  print('PASS: Administration read verified for ' + name)
+              except urllib.error.HTTPError as error:
+                  failures += 1
+                  print('FAIL: ' + name + ' returned HTTP ' + str(error.code))
+          print('No settings changed. Administration write has not been exercised.')
+          raise SystemExit(1 if failures else 0)
+          PY

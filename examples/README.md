@@ -8,9 +8,9 @@ MeitouMods (`.github/workflows/ci.yml`, preserve the required check name during 
 name: CI
 on:
   pull_request:
-    branches: [beta, main]
+    branches: [beta, main, release]
   push:
-    branches: [beta, main]
+    branches: [beta, main, release]
 permissions:
   contents: read
 concurrency:

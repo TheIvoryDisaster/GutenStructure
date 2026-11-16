@@ -2,7 +2,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, release]
+    branches: [main, beta, release]
 permissions:
   contents: read
 concurrency:
@@ -36,3 +36,21 @@ jobs:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -v
       - run: python scripts/sync_project.py --validate-only
+      - run: python -m scripts.apply_release_policy --validate-only
+  release-readiness:
+    name: Release readiness
+    if: always()
+    needs: [terraform, automation]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all prerequisite checks
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          python - <<'PYCODE'
+          import os
+          results = os.environ['RESULTS'].split(',')
+          if not results or any(result != 'success' for result in results):
+              raise SystemExit('A required check failed, was cancelled, or was skipped')
+          PYCODE
