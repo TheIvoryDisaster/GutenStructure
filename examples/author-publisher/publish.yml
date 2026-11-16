@@ -1,0 +1,45 @@
+# Copy to .github/workflows/publish.yml in YOUR personally owned publisher repo.
+# Replace every REPLACE_* value through a reviewed PR before running.
+name: Publish my approved mod release
+on:
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Published stable source release tag
+        required: true
+      source-sha:
+        description: Exact 40-character commit at the source release branch head
+        required: true
+      asset-id:
+        description: GitHub release ZIP asset ID
+        required: true
+      sha256:
+        description: Author-reviewed 64-character payload SHA-256
+        required: true
+      version:
+        description: Version to display on Nexus
+        required: true
+      publish-nexus:
+        description: Upload after preview and my environment approval
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  publish:
+    # Pin a reviewed full SHA promoted to GutenStructure release after beta testing.
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/author-publish.yml@REPLACE_REVIEWED_40_CHARACTER_SHA
+    with:
+      source-repository: Meitou-Modding-Ecosystem/MeitouMods
+      release-tag: ${{ inputs.release-tag }}
+      source-sha: ${{ inputs.source-sha }}
+      asset-id: ${{ inputs.asset-id }}
+      expected-sha256: ${{ inputs.sha256 }}
+      version: ${{ inputs.version }}
+      destination: both
+      # IDs are author-owned configuration, not freely selectable run inputs.
+      nexus-file-id: 'REPLACE_EXISTING_NEXUS_FILE_ID'
+      steam-item-id: 'REPLACE_EXISTING_KENSHI_WORKSHOP_ITEM_ID'
+      publish-nexus: ${{ inputs.publish-nexus }}
+      publisher-environment: nexus-publish
+    # No secrets: inherit. The reusable job uses YOUR environment's key.

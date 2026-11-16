@@ -1,0 +1,175 @@
+name: Author-controlled mod publisher
+on:
+  workflow_call:
+    inputs:
+      source-repository:
+        type: string
+        required: true
+      release-tag:
+        type: string
+        required: true
+      source-sha:
+        type: string
+        required: true
+      asset-id:
+        type: string
+        required: true
+      expected-sha256:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      destination:
+        type: string
+        default: both
+      nexus-file-id:
+        type: string
+        default: ''
+      steam-item-id:
+        type: string
+        default: ''
+      publish-nexus:
+        type: boolean
+        default: false
+      publisher-environment:
+        type: string
+        default: nexus-publish
+    outputs:
+      nexus-version-id:
+        description: Nexus version ID, empty for preview-only runs
+        value: ${{ jobs.nexus.outputs.version-id }}
+# No platform secrets are accepted via workflow_call or secrets: inherit.
+# The Nexus job resolves its environment secret in the CALLER repository.
+permissions:
+  contents: read
+concurrency:
+  group: author-publish-${{ github.repository }}-${{ inputs.nexus-file-id }}
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OWNER_TYPE: ${{ github.event.repository.owner.type }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      SOURCE_REPOSITORY: ${{ inputs.source-repository }}
+      RELEASE_TAG: ${{ inputs.release-tag }}
+      SOURCE_SHA: ${{ inputs.source-sha }}
+      ASSET_ID: ${{ inputs.asset-id }}
+      EXPECTED_SHA256: ${{ inputs.expected-sha256 }}
+      VERSION: ${{ inputs.version }}
+      DESTINATION: ${{ inputs.destination }}
+      NEXUS_FILE_ID: ${{ inputs.nexus-file-id }}
+      STEAM_ITEM_ID: ${{ inputs.steam-item-id }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: 990870ee903aa0d723e926c931e0a31ad9535c13
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Verify source protection, tag, payload identity and archive
+        run: python -m scripts.author_publish
+      - name: Describe pending publication
+        env:
+          PUBLISH_NEXUS: ${{ inputs.publish-nexus }}
+        run: |
+          if [ "$PUBLISH_NEXUS" = true ] && [ "$DESTINATION" = steam ]; then
+            echo 'Nexus publishing requested for a Steam-only plan' >&2
+            exit 1
+          fi
+          {
+            echo '## Author publishing preview'
+            echo 'Source release and payload verified. A .mod file is present; complete runtime/dependency validation remains the author responsibility.'
+            echo 'Steam: preview only. No Steam credentials accepted or SteamCMD execution implemented.'
+            echo 'Nexus: uploads require explicit opt-in and the caller environment approval/configuration.'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Save credential-free publishing plan
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: author-publishing-plan
+          path: |
+            publish-payload/plan.json
+            publish-payload/workshop-preview.vdf
+          retention-days: 3
+  nexus:
+    if: inputs.publish-nexus && (inputs.destination == 'nexus' || inputs.destination == 'both')
+    needs: preview
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.publisher-environment }}
+    outputs:
+      version-id: ${{ steps.upload.outputs.version_id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      OWNER_TYPE: ${{ github.event.repository.owner.type }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      SOURCE_REPOSITORY: ${{ inputs.source-repository }}
+      RELEASE_TAG: ${{ inputs.release-tag }}
+      SOURCE_SHA: ${{ inputs.source-sha }}
+      ASSET_ID: ${{ inputs.asset-id }}
+      EXPECTED_SHA256: ${{ inputs.expected-sha256 }}
+      VERSION: ${{ inputs.version }}
+      DESTINATION: ${{ inputs.destination }}
+      NEXUS_FILE_ID: ${{ inputs.nexus-file-id }}
+      STEAM_ITEM_ID: ${{ inputs.steam-item-id }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: 990870ee903aa0d723e926c931e0a31ad9535c13
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Verify source protection, tag, payload identity and archive
+        run: python -m scripts.author_publish
+      - name: Refuse automatic rerun of a possibly completed upload
+        run: |
+          if [ "$GITHUB_RUN_ATTEMPT" != 1 ]; then
+            echo 'Check the Nexus file and prior receipt before starting a fresh approved dispatch; reruns cannot upload.' >&2
+            exit 1
+          fi
+      - name: Require the author environment key
+        env:
+          NEXUS_KEY: ${{ secrets.NEXUSMODS_API_KEY }}
+        run: |
+          if [ -z "$NEXUS_KEY" ]; then
+            echo 'Configure NEXUSMODS_API_KEY in the selected environment of your personal caller repository.' >&2
+            exit 1
+          fi
+      - name: Add a version to the existing Nexus file
+        id: upload
+        uses: Nexus-Mods/upload-action@98532f7670c27cbecc78fae03fa3e278147827e2
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          file_id: ${{ inputs.nexus-file-id }}
+          filename: publish-payload/release.zip
+          version: ${{ inputs.version }}
+          archive_existing_version: 'false'
+          primary_mod_manager_download: 'false'
+          update_mod_version: 'false'
+      - name: Record the resulting Nexus version
+        env:
+          NEXUS_VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: |
+          python - <<'PYCODE'
+          import json, os, re
+          from pathlib import Path
+          version_id = os.environ['NEXUS_VERSION_ID']
+          if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,127}', version_id):
+              raise SystemExit('Upload may have completed, but no valid receipt was returned. Inspect Nexus before retrying.')
+          path = Path('publish-payload/plan.json')
+          receipt = json.loads(path.read_text())
+          receipt.update(uploaded=True, nexus_version_id=version_id)
+          Path('nexus-receipt.json').write_text(json.dumps(receipt, indent=2) + '\n')
+          PYCODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nexus-publication-receipt
+          path: nexus-receipt.json
+          retention-days: 30

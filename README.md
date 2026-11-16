@@ -47,4 +47,6 @@ Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconci
 
 ### Mod storefront publishing (beta spike)
 
-[Steam Workshop and Nexus publishing](docs/mod-distribution.md) documents author setup, initial uploads, credential isolation and the release handoff. The offline planner and CI preview always perform **no uploads**; destination IDs and live author validation are pending. Changes need owner feedback on beta before production promotion.
+[Steam Workshop and Nexus publishing](docs/mod-distribution.md) documents author setup, initial uploads, credential isolation and the release handoff. The original offline planner and CI preview perform **no uploads**. The author-owned workflow described below adds opt-in Nexus publishing; destination IDs and live author validation are pending. Changes need owner feedback on beta before production promotion.
+
+Authors can call the [author-owned reusable publisher](docs/author-publisher.md) from their own personal repositories. Nexus is explicit opt-in with credentials kept in the author's environment; Steam remains preview-only. The beta PR requires owner testing before production promotion.
