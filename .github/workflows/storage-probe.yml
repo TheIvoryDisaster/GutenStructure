@@ -1,0 +1,47 @@
+name: Temporary Azure storage verification
+on:
+  workflow_dispatch:
+    inputs:
+      verify_storage:
+        description: Run data-plane checks after configuring the temporary identity
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: temporary-storage-probe
+  cancel-in-progress: false
+jobs:
+  probe:
+    if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Inspect allowlisted identity claims (never log the token)
+        run: |
+          python - <<'PY'
+          import base64, json, os, urllib.request
+          url = os.environ['ACTIONS_ID_TOKEN_REQUEST_URL'] + '&audience=api%3A%2F%2FAzureADTokenExchange'
+          request = urllib.request.Request(url, headers={'Authorization': 'Bearer ' + os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']})
+          with urllib.request.urlopen(request, timeout=15) as response:
+              token = json.load(response)['value']
+          segment = token.split('.')[1]
+          claims = json.loads(base64.urlsafe_b64decode(segment + '=' * (-len(segment) % 4)))
+          print(json.dumps({key: claims.get(key) for key in ['iss', 'aud', 'sub', 'repository_id', 'repository_owner_id', 'ref']}))
+          PY
+      - name: Sign in with temporary container-scoped identity
+        if: inputs.verify_storage
+        uses: azure/login@935127ca5bb3c4b02c9c2c10060028383878f33f # v3
+        with:
+          client-id: 100ab668-8f6a-4aa1-a524-6b7163b8f38c
+          tenant-id: 5555277d-1b2b-415b-8d07-4a5bc3766657
+          subscription-id: 87ce383f-59c7-449f-aa2e-059287551b01
+      - name: Verify storage and isolation
+        if: inputs.verify_storage
+        run: python scripts/storage_probe.py

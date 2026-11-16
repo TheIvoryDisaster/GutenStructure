@@ -1,0 +1,39 @@
+name: Synchronize Meitou project
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply changes (false previews only)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: meitou-project-sync
+  cancel-in-progress: false
+jobs:
+  sync:
+    if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Validate manifest
+        run: python scripts/sync_project.py --validate-only
+      - name: Preview or apply project changes
+        env:
+          MEITOU_PROJECT_TOKEN: ${{ secrets.MEITOU_PROJECT_TOKEN }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          if [ -z "$MEITOU_PROJECT_TOKEN" ]; then
+            echo '::error::Set the MEITOU_PROJECT_TOKEN Actions secret in GutenStructure. Project synchronization has not run.'
+            exit 1
+          fi
+          args=()
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          python scripts/sync_project.py "${args[@]}"
