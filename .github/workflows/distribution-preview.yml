@@ -1,0 +1,44 @@
+name: Preview mod distribution (no uploads)
+on:
+  workflow_dispatch:
+    inputs:
+      mod:
+        description: Mod to inspect (metadata only, no credentials)
+        type: choice
+        options: [rivalry-core, ashen-hand, husbandry]
+        default: rivalry-core
+      version:
+        description: Proposed version
+        default: 0.0.0-spike
+        required: true
+  pull_request:
+    paths:
+      - distribution/**
+      - scripts/distribution_plan.py
+      - tests/test_distribution_plan.py
+      - .github/workflows/distribution-preview.yml
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -p test_distribution_plan.py -v
+      - name: Generate a credential-free plan
+        env:
+          MOD: ${{ inputs.mod || 'rivalry-core' }}
+          VERSION: ${{ inputs.version || '0.0.0-spike' }}
+        run: |
+          python scripts/distribution_plan.py --mod "$MOD" --version "$VERSION" > distribution-plan.json
+          cat distribution-plan.json
+          {
+            echo '## Distribution preview: no uploads'
+            echo 'This spike cannot authenticate or publish. Destination IDs and author validation remain pending.'
+          } >> "$GITHUB_STEP_SUMMARY"

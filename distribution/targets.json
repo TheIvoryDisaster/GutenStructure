@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "live_publishing_enabled": false,
+  "mods": {
+    "rivalry-core": {
+      "repository": "Meitou-Modding-Ecosystem/MeitouMods",
+      "author": null,
+      "steam": {
+        "app_id": 233860,
+        "published_file_id": null,
+        "validated_for_kenshi": false
+      },
+      "nexus": {
+        "game": "kenshi",
+        "mod_id": null,
+        "file_id": null
+      }
+    },
+    "ashen-hand": {
+      "repository": "Meitou-Modding-Ecosystem/MeitouMods",
+      "author": null,
+      "steam": {
+        "app_id": 233860,
+        "published_file_id": null,
+        "validated_for_kenshi": false
+      },
+      "nexus": {
+        "game": "kenshi",
+        "mod_id": null,
+        "file_id": null
+      }
+    },
+    "husbandry": {
+      "repository": "Meitou-Modding-Ecosystem/MeitouMods",
+      "author": null,
+      "steam": {
+        "app_id": 233860,
+        "published_file_id": null,
+        "validated_for_kenshi": false
+      },
+      "nexus": {
+        "game": "kenshi",
+        "mod_id": null,
+        "file_id": null
+      }
+    }
+  }
+}
