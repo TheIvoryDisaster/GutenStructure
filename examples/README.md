@@ -36,3 +36,7 @@ jobs:
 ```
 
 The Python command is intentionally repository-controlled and executes only on an unprivileged GitHub-hosted runner. Do not reuse this interface in publishing jobs.
+
+## Personal mod publishing
+
+Copy [the author publisher caller](author-publisher/publish.yml) to your own personal repository. Follow the [setup and extension guide](../docs/author-publisher.md) for required replacements, input values, author-owned environment secrets, approval configuration, additional jobs, multiple mods and troubleshooting. Nexus uploads require explicit opt-in; Steam is preview-only. The dedicated [author publishing skill](../.agents/skills/author-publishing/SKILL.md) guides agents assisting with setup. This beta implementation still needs owner testing before production promotion.

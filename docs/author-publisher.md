@@ -32,3 +32,73 @@ Steam's [subscriber agreement](https://store.steampowered.com/subscriber_agreeme
 ## Test status and next steps
 
 Unit tests cover owner-only dispatch, input injection, release/asset substitution, digest failures, download redirects and non-overwriting payload storage. CI validates the code without author credentials. The example intentionally requires author-specific replacements; no personal repo, secret, environment or live Nexus file has been configured by this PR. First owner test: create a personal caller, configure real IDs, run a preview against a complete stable release, then approve one Nexus update. Steam remains a documented no-op until its separate acceptance criteria are met.
+
+## Extend the caller in your own repository
+
+Keep GutenStructure's reusable publisher pinned, and add your own jobs around the `publish` job in the copied caller. GitHub calls reusable workflows at **job level**: a job with `uses:` cannot also contain `steps:`. Use `needs:` to connect separate jobs. A failed prerequisite prevents publication.
+
+For example, add a credential-free author checklist job and make `publish` depend on it:
+
+```yaml
+jobs:
+  author-checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check my release checklist
+        run: echo 'Replace this step with your own checks; do not load publishing secrets here.'
+  publish:
+    needs: author-checks
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/author-publish.yml@REPLACE_REVIEWED_40_CHARACTER_SHA
+    # Keep the complete `with:` mapping from the caller template here.
+```
+
+That is a structural snippet, not a complete runnable workflow. Start with [publish.yml](../examples/author-publisher/publish.yml); preserve its `workflow_dispatch`, read-only permissions and full input mapping. Author checks may verify your checklist or test the mod in an isolated environment. A successful local rebuild does not replace the release ZIP selected by asset ID: the publisher always fetches the approved GitHub release asset itself. It does not accept a caller workspace path, arbitrary upload URL or caller-built Actions artifact.
+
+To perform work after a successful Nexus upload, add another job with `needs: publish` and inspect `needs.publish.outputs.nexus-version-id`. It is empty during previews, so skip Nexus-specific follow-up when that output is empty. Keep the source version/hash and Nexus receipt together. Do not turn a receipt-processing failure into an automatic upload retry. Add notification credentials only to the separate notification job, with their own minimum permissions; the template does not send messages automatically.
+
+For multiple mods, copy the caller into a separately named workflow for each mod and keep each destination ID fixed in its `with:` mapping. Use distinct author-owned environments when that separation helps your approvals. Every workflow still uses the same pinned reusable implementation. Do not accept arbitrary Nexus or Workshop IDs as public dispatch inputs. Separate environments do not narrow the Nexus API key's actual platform permissions or isolate credentials from the personal repository administrator.
+
+To change how publishing itself works, open a grouped GutenStructure PR against `beta`, update the guide/tests, and test before promotion. Do not work around a blocked source gate, substitute a moving workflow reference, inject custom commands into the privileged job or introduce shared author credentials. Authors review and explicitly update their workflow pins after promotion; central updates never silently replace their chosen version.
+
+## Caller input reference
+
+| Input | Where the author gets it | Required behavior |
+| --- | --- | --- |
+| `source-repository` | Fixed caller configuration, e.g. `Meitou-Modding-Ecosystem/MeitouMods` | Public organization repository on the implementation's allowlist. New source repos require a reviewed implementation update. |
+| `release-tag` | The source repo's published GitHub Release | Stable release, not a draft/prerelease; tag must resolve to `source-sha`. |
+| `source-sha` | Source repo's current `release` branch commit | Full 40-character lowercase Git SHA. Historical release heads are intentionally rejected. |
+| `asset-id` | GitHub release asset metadata | Positive numeric asset ID, not a workflow run ID or artifact ID. |
+| `expected-sha256` | Author-reviewed release manifest, checked against GitHub metadata | 64 lowercase hexadecimal characters, without `sha256:`. Must match the GitHub asset digest and downloaded bytes. |
+| `version` | Your intended published mod version | Letters/digits plus `.`, `+`, `_` or `-`, up to 64 characters, starting with a letter/digit. It is not automatically derived from the tag. |
+| `destination` | Fixed caller configuration | `nexus`, `steam` or `both`; `both` still only previews Steam. Default is `both`. |
+| `nexus-file-id` | Existing file's Nexus v3 identifier | Required for `nexus`/`both`; use the file/update-group ID, not its version ID. |
+| `steam-item-id` | Existing Kenshi Workshop page | Required for `steam`/`both`; positive item ID, never zero. |
+| `publish-nexus` | Owner's manual dispatch choice | Boolean; default `false`. `true` permits the live Nexus job after environment approval/configuration. |
+| `publisher-environment` | Environment in the personal caller repo | Default `nexus-publish`; contains that author's `NEXUSMODS_API_KEY`. Configure protection before opting in. |
+
+Retrieve non-secret release metadata with GitHub CLI, replacing the example tag:
+
+```sh
+gh api repos/Meitou-Modding-Ecosystem/MeitouMods/branches/release --jq '.commit.sha'
+gh api repos/Meitou-Modding-Ecosystem/MeitouMods/releases/tags/v1.2.3 \
+  --jq '{tag: .tag_name, assets: [.assets[] | {id, name, size, digest}]}'
+```
+
+If the release has more assets than the release response includes, use its `/releases/RELEASE_ID/assets` endpoint with pagination. Confirm you selected the ZIP for the correct mod and platform. GitHub metadata identifies the bytes; it does not prove the payload passed game testing. Do not paste platform credentials into these commands or documentation.
+
+## First-run troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Workflow cannot be found | Replace the example SHA; verify the pinned commit contains `author-publish.yml`, the central repo is accessible, and the caller is on your default branch. |
+| No **Run workflow** button | Commit the caller's `workflow_dispatch` workflow to the personal repo's default branch. |
+| Owner/default-branch check fails | Run it yourself as the personal repo owner, from its default branch. Organization callers, collaborator dispatches and another user's reruns are intentionally rejected. |
+| Release protection check fails | Fix source protections/CODEOWNERS through reviewed org changes; two approvals including a code owner are required. Do not weaken the gate in the personal caller. |
+| Asset digest or source SHA fails | Check the selected asset/release, manifest and current release head. Missing GitHub digest is a blocker; changing the expected hash merely to silence a mismatch is unsafe. |
+| ZIP rejected | Current bounds are 96 MiB compressed and 512 MiB expanded; an FCS `.mod` file is required. Unsafe paths, links, duplicates and encrypted ZIPs are rejected. Larger/other packages need a reviewed change. |
+| Nexus key is empty | Put `NEXUSMODS_API_KEY` in the selected **environment of the personal caller repository**, not GutenStructure, an unrelated environment or the mod organization's repository. |
+| Nexus job waits | Review the pending deployment in the personal caller's Actions run and approve it as the configured environment reviewer. |
+| Steam was not uploaded | Expected: this version only generates a VDF preview and does not accept Steam credentials. |
+| Upload failed or rerun refused | Inspect the Nexus file and prior run receipt first. An upload may have succeeded before a later step failed. Start another approved dispatch only after resolving that ambiguity. |
