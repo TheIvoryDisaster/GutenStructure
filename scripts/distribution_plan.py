@@ -14,6 +14,12 @@ def positive_id(value):
     return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
+def valid_nexus_id(value):
+    # v3 identifiers are opaque strings, not necessarily legacy numeric IDs.
+    return positive_id(value) or (isinstance(value, str) and value != '0'
+        and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,127}', value) is not None)
+
+
 def load_registry(path):
     registry = json.loads(Path(path).read_text())
     if registry.get("schema_version") != 1 or registry.get("live_publishing_enabled") is not False:
@@ -29,9 +35,11 @@ def load_registry(path):
         steam, nexus = target["steam"], target["nexus"]
         if steam.get("app_id") != 233860 or nexus.get("game") != "kenshi":
             raise ValueError("Only Kenshi is covered by this spike")
-        for value in [steam.get("published_file_id"), nexus.get("mod_id"), nexus.get("file_id")]:
+        for value in [steam.get("published_file_id"), nexus.get("mod_id")]:
             if value is not None and not positive_id(value):
                 raise ValueError("Destination IDs must be positive; zero could create a duplicate item")
+        if nexus.get("file_id") is not None and not valid_nexus_id(nexus["file_id"]):
+            raise ValueError("Invalid Nexus v3 file identifier")
         if not isinstance(steam.get("validated_for_kenshi"), bool):
             raise ValueError("Kenshi validation must be explicitly recorded")
         author = target.get("author")

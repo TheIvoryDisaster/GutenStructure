@@ -9,7 +9,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from scripts.distribution_plan import MAX_ARCHIVE, inspect_archive, workshop_vdf
+from scripts.distribution_plan import MAX_ARCHIVE, inspect_archive, valid_nexus_id, workshop_vdf
 from scripts.release_gate import ALLOWED, MissingResource, check
 
 
@@ -36,9 +36,10 @@ def validate_inputs(repository, tag, commit, asset_id, digest, version, destinat
         raise ValueError('Invalid version')
     if destination not in ('nexus', 'steam', 'both'):
         raise ValueError('Invalid destination')
-    for value, needed in ((nexus_file, destination in ('nexus', 'both')), (steam_item, destination in ('steam', 'both'))):
-        if needed and not re.fullmatch(r'[1-9][0-9]{0,19}', value):
-            raise ValueError('Positive existing destination ID required')
+    if destination in ('nexus', 'both') and not valid_nexus_id(nexus_file):
+        raise ValueError('Existing Nexus v3 file ID required')
+    if destination in ('steam', 'both') and not re.fullmatch(r'[1-9][0-9]{0,19}', steam_item):
+        raise ValueError('Positive existing Workshop item ID required')
 
 
 def verify_source(api, repository, tag, commit, asset_id, digest):

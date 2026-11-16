@@ -31,6 +31,9 @@ class AuthorPublishTests(unittest.TestCase):
     def test_exact_inputs_and_existing_destination_ids_required(self):
         args = [REPO, 'v1.0', SHA, '42', DIGEST, '1.0', 'both', '100', '200']
         validate_inputs(*args)
+        opaque = args.copy()
+        opaque[7] = 'd6eb20d0-a049-4b42-8023-a03b8b312a69'
+        validate_inputs(*opaque)
         for index, value in [(0,'Other/MeitouMods'),(1,'../tag'),(2,'main'),(3,'0'),(4,'bad'),(5,'$(id)'),(6,'unknown'),(7,'0'),(8,'')]:
             bad = args.copy()
             bad[index] = value
