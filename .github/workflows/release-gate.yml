@@ -11,7 +11,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 048a1ac117eddf7f3b264a71ba53daadce6fa27a
+          ref: fc2a722a43388cd1bacda76e81a8099b83a3f365
           persist-credentials: false
       - name: Verify release branch and enforced review requirements
         env:
