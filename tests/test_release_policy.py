@@ -13,7 +13,7 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertTrue(review["require_code_owner_review"])
         self.assertTrue(review["dismiss_stale_reviews_on_push"])
         self.assertEqual(policy["bypass_actors"], [])
-        self.assertEqual(policy["conditions"]["ref_name"]["include"], ["refs/heads/release"])
+        self.assertEqual(policy["conditions"]["ref_name"]["include"], ["refs/heads/main", "refs/heads/release"])
 
     def test_explicit_seven_repository_plan(self):
         plan = validate_plan(json.loads(Path("backlog/releases.json").read_text()))
@@ -37,7 +37,7 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_never_changes_other_branch_scope_or_unknown_controls(self):
         desired = desired_ruleset(["build / build"])
         changed = copy.deepcopy(desired)
-        changed["conditions"]["ref_name"]["include"].append("refs/heads/main")
+        changed["conditions"]["ref_name"]["include"].append("refs/heads/development")
         with self.assertRaises(ValueError):
             ensure_not_weaker(changed, desired)
         changed = copy.deepcopy(desired)
@@ -110,3 +110,19 @@ class FuturePolicyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             synchronize(wrong, plan, "Meitou-Modding-Ecosystem", apply=True)
         self.assertEqual(mutations, [])
+
+
+class PersonalExceptionTests(unittest.TestCase):
+    def test_personal_repository_requires_prs_without_reviews(self):
+        policy = desired_ruleset(["terraform", "automation"], personal=True)
+        review = next(rule for rule in policy["rules"] if rule["type"] == "pull_request")["parameters"]
+        self.assertEqual(review["required_approving_review_count"], 0)
+        self.assertFalse(review["require_code_owner_review"])
+        self.assertFalse(review["require_last_push_approval"])
+        self.assertEqual(policy["bypass_actors"], [])
+        self.assertEqual(set(policy["conditions"]["ref_name"]["include"]),
+                         {"refs/heads/main", "refs/heads/release", "refs/heads/beta"})
+        organization = desired_ruleset(["build / build"])
+        review = next(rule for rule in organization["rules"] if rule["type"] == "pull_request")["parameters"]
+        self.assertEqual(review["required_approving_review_count"], 2)
+        self.assertTrue(review["require_code_owner_review"])

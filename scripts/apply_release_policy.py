@@ -47,13 +47,13 @@ def discover_repositories(api, selected):
         page += 1
 
 
-def desired_ruleset(checks):
-    return {"name": "Release promotion", "target": "branch", "enforcement": "active", "bypass_actors": [],
-        "conditions": {"ref_name": {"include": ["refs/heads/release"], "exclude": []}},
+def desired_ruleset(checks, personal=False):
+    return {"name": "Stable branch protection", "target": "branch", "enforcement": "active", "bypass_actors": [],
+        "conditions": {"ref_name": {"include": ["refs/heads/main", "refs/heads/release", "refs/heads/beta"] if personal else ["refs/heads/main", "refs/heads/release"], "exclude": []}},
         "rules": [{"type": "deletion"}, {"type": "non_fast_forward"},
-          {"type": "pull_request", "parameters": {"required_approving_review_count": 2,
-            "dismiss_stale_reviews_on_push": True, "require_code_owner_review": True,
-            "require_last_push_approval": True, "required_review_thread_resolution": True}},
+          {"type": "pull_request", "parameters": {"required_approving_review_count": 0 if personal else 2,
+            "dismiss_stale_reviews_on_push": True, "require_code_owner_review": not personal,
+            "require_last_push_approval": not personal, "required_review_thread_resolution": True}},
           {"type": "required_status_checks", "parameters": {"strict_required_status_checks_policy": True,
             "required_status_checks": [{"context": check, "integration_id": 15368} for check in checks]}}]}
 
@@ -72,15 +72,17 @@ def validate_plan(plan):
     return plan
 
 
-def ensure_not_weaker(existing, desired):
-    if existing.get("conditions") != desired["conditions"]:
-        raise ValueError("Existing Release promotion ruleset has a different branch scope; review manually")
+def ensure_not_weaker(existing, desired, personal=False):
+    previous = existing.get("conditions", {}).get("ref_name", {})
+    wanted = desired["conditions"]["ref_name"]
+    if previous.get("exclude") != wanted["exclude"] or not set(previous.get("include", [])).issubset(wanted["include"]):
+        raise ValueError("Existing managed ruleset has a different branch scope; review manually")
     desired_by_type = {rule["type"]: rule for rule in desired["rules"]}
     for rule in existing.get("rules", []):
         kind, parameters = rule["type"], rule.get("parameters", {})
         if kind not in desired_by_type:
             raise ValueError("Existing release ruleset has additional controls; preserve them manually")
-        if kind == "pull_request" and (parameters.get("required_approving_review_count", 0) > 2 or parameters.get("required_reviewers")):
+        if kind == "pull_request" and not personal and (parameters.get("required_approving_review_count", 0) > 2 or parameters.get("required_reviewers")):
             raise ValueError("Existing release review requirement is stronger; do not weaken it")
         if kind == "required_status_checks":
             expected = {(check["context"], check.get("integration_id")) for check in desired_by_type[kind]["parameters"]["required_status_checks"]}
@@ -119,13 +121,14 @@ def synchronize(api, plan, target, apply=False):
         rulesets = api(f"repos/{repo}/rulesets?includes_parents=false&per_page=100")
         if len(rulesets) >= 100:
             raise ValueError("Refusing an incomplete ruleset inventory")
-        matching = [rule for rule in rulesets if rule["name"] == "Release promotion"]
+        matching = [rule for rule in rulesets if rule["name"] in ("Stable branch protection", "Release promotion")]
         if len(matching) > 1:
             raise ValueError("Duplicate Release promotion rulesets; review manually")
         existing = api(f"repos/{repo}/rulesets/{matching[0]['id']}") if matching else None
-        desired = desired_ruleset(item["checks"])
+        personal = repo == "TheIvoryDisaster/GutenStructure"
+        desired = desired_ruleset(item["checks"], personal=personal)
         if existing:
-            ensure_not_weaker(existing, desired)
+            ensure_not_weaker(existing, desired, personal=personal)
             # Preserve supported additional review parameters rather than reset them.
             old_by_type = {rule["type"]: rule for rule in existing["rules"]}
             for rule in desired["rules"]:

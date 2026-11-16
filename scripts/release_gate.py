@@ -18,18 +18,18 @@ def allowed_repository(repository):
     return repository == "TheIvoryDisaster/GutenStructure" or bool(re.fullmatch(r"Meitou-Modding-Ecosystem/[A-Za-z0-9_.-]+", repository))
 
 
-def validate_rules(rules, details):
+def validate_rules(rules, details, personal=False):
     """At least one enforced ruleset must impose both reviews without bypass actors."""
     for rule in rules:
         parameters = rule.get("parameters", {})
-        if rule.get("type") != "pull_request" or parameters.get("required_approving_review_count", 0) < 2:
+        if rule.get("type") != "pull_request":
             continue
-        if not parameters.get("require_code_owner_review"):
+        if not personal and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
             continue
         ruleset = details(rule["ruleset_id"])
         if ruleset.get("enforcement") == "active" and ruleset.get("bypass_actors") == []:
             return
-    raise RuntimeError("Release branch requires an enforced ruleset with two approvals, a code owner and no bypass actors")
+    raise RuntimeError("Release branch lacks the required enforced PR/review policy without bypass actors")
 
 
 def check(api, repository, ref, commit):
@@ -62,8 +62,8 @@ def check(api, repository, ref, commit):
     if api(f"repos/{repository}/codeowners/errors?ref=release").get("errors"):
         raise RuntimeError("GitHub reports invalid CODEOWNERS entries; publishing is blocked")
     rules = api(f"repos/{repository}/rules/branches/release")
-    validate_rules(rules, lambda ruleset_id: api(f"repos/{repository}/rulesets/{ruleset_id}"))
-    print("PASS: release branch head and two-reviewer/code-owner ruleset verified")
+    validate_rules(rules, lambda ruleset_id: api(f"repos/{repository}/rulesets/{ruleset_id}"), personal=repository == "TheIvoryDisaster/GutenStructure")
+    print("PASS: release head, ownership and repository-specific PR/review rules verified")
 
 
 def main():

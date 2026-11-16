@@ -81,3 +81,15 @@ class FutureRepositoryGateTests(unittest.TestCase):
                 return {"commit": {"sha": "approved"}}
             with self.assertRaises(RuntimeError):
                 check(api, "Meitou-Modding-Ecosystem/NewMod", "refs/heads/release", "approved")
+
+
+class PersonalGateExceptionTests(unittest.TestCase):
+    def test_zero_review_rule_only_passes_for_personal_exception(self):
+        rule = {"type": "pull_request", "ruleset_id": 1,
+                "parameters": {"required_approving_review_count": 0, "require_code_owner_review": False}}
+        details = lambda _: {"enforcement": "active", "bypass_actors": []}
+        validate_rules([rule], details, personal=True)
+        with self.assertRaises(RuntimeError):
+            validate_rules([rule], details)
+        with self.assertRaises(RuntimeError):
+            validate_rules([rule], lambda _: {"enforcement": "active", "bypass_actors": [{"actor_type": "RepositoryRole"}]}, personal=True)

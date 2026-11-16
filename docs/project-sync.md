@@ -6,8 +6,8 @@ The current cloud workspace substitutes its GitHub connector credential for supp
 
 ## One-time owner setup
 
-1. Open https://github.com/TheIvoryDisaster/GutenStructure/settings/secrets/actions/new .
-2. Name the secret `MEITOU_PROJECT_TOKEN`. Set its value to the complete fine-grained token owned by Meitou-Modding-Ecosystem with organization Projects read/write permission. No broader organization or Azure permissions are needed. Issue resolution also requires visibility of the public issue URLs in the manifest.
+1. Open GutenStructure Settings > Environments > Default > Environment secrets.
+2. Name the environment secret `MEITOU_PROJECT_TOKEN`. Set its value to the complete fine-grained token owned by Meitou-Modding-Ecosystem with organization Projects read/write permission. No broader organization or Azure permissions are needed. Issue resolution also requires visibility of the public issue URLs in the manifest.
 3. Run **Actions > Synchronize Meitou project > Run workflow** from `main`, leaving `apply` false to preview.
 4. Review the URLs and field updates, then run again with `apply` true.
 
