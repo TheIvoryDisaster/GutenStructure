@@ -1,0 +1,45 @@
+name: Configure release branch protections
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Repositories whose rulesets should be inspected
+        type: choice
+        options: [organization, personal]
+        default: organization
+      apply:
+        description: Apply the previewed rulesets
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: release-policy
+  cancel-in-progress: false
+jobs:
+  configure:
+    if: github.repository == 'TheIvoryDisaster/GutenStructure' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Configure organization repository protections
+        if: inputs.target == 'organization'
+        env:
+          RELEASE_ADMIN_TOKEN: ${{ secrets.MEITOU_RELEASE_ADMIN_TOKEN }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          args=()
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          python -m scripts.apply_release_policy --target Meitou-Modding-Ecosystem "${args[@]}"
+      - name: Configure personally owned repository protections
+        if: inputs.target == 'personal'
+        env:
+          RELEASE_ADMIN_TOKEN: ${{ secrets.GUTENSTRUCTURE_ADMIN_TOKEN }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          args=()
+          if [ "$APPLY" = true ]; then args+=(--apply); fi
+          python -m scripts.apply_release_policy --target TheIvoryDisaster "${args[@]}"

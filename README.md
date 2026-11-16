@@ -11,6 +11,8 @@ Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository 
 ## Infrastructure and publishing
 
 - [Build inventory](docs/build-inventory.md)
+- [Release branch promotion](docs/releases.md)
+- [Project synchronization](docs/project-sync.md)
 - [Publishing boundary and rollout](docs/publishing.md)
 - [Cost assumptions](docs/costs.md)
 - [Terraform module](terraform/README.md)
