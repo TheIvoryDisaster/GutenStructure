@@ -15,14 +15,14 @@ DIGEST = 'b' * 64
 class AuthorPublishTests(unittest.TestCase):
     def context(self):
         return dict(GITHUB_EVENT_NAME='workflow_dispatch', GITHUB_REPOSITORY_OWNER='Author',
-                    GITHUB_ACTOR='Author', GITHUB_REPOSITORY_OWNER_ID='123', GITHUB_ACTOR_ID='123',
+                    GITHUB_ACTOR='Author', GITHUB_TRIGGERING_ACTOR='Author', GITHUB_REPOSITORY_OWNER_ID='123', GITHUB_ACTOR_ID='123',
                     OWNER_TYPE='User', GITHUB_REF='refs/heads/main', DEFAULT_BRANCH='main')
 
     def test_only_owner_manual_default_branch_runs_are_accepted(self):
         validate_context(self.context())
         for key, value in [('GITHUB_EVENT_NAME','pull_request'), ('GITHUB_ACTOR','Other'),
                            ('GITHUB_ACTOR_ID','999'), ('OWNER_TYPE','Organization'),
-                           ('GITHUB_REF','refs/heads/test')]:
+                           ('GITHUB_REF','refs/heads/test'), ('GITHUB_TRIGGERING_ACTOR','Other')]:
             context = self.context()
             context[key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):

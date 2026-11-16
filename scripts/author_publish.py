@@ -17,6 +17,7 @@ def validate_context(context):
     if (context.get('GITHUB_EVENT_NAME') != 'workflow_dispatch'
             or context.get('GITHUB_REPOSITORY_OWNER') != context.get('GITHUB_ACTOR')
             or context.get('GITHUB_REPOSITORY_OWNER_ID') != context.get('GITHUB_ACTOR_ID')
+            or context.get('GITHUB_TRIGGERING_ACTOR') != context.get('GITHUB_ACTOR')
             or context.get('OWNER_TYPE') != 'User'
             or context.get('GITHUB_REF') != 'refs/heads/' + context.get('DEFAULT_BRANCH', '')):
         raise ValueError('Only the personal repository owner may dispatch from its default branch')
