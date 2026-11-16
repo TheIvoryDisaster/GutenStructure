@@ -1,0 +1,12 @@
+# Terraform state, plans and credentials never belong in Git.
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+crash.log
+.azure/
+.env
+__pycache__/

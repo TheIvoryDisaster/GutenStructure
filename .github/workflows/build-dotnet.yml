@@ -1,0 +1,50 @@
+name: Reusable .NET build
+on:
+  workflow_call:
+    inputs:
+      runner:
+        type: string
+        default: ubuntu-latest
+      dotnet-version:
+        type: string
+        default: 11.0.x
+      project:
+        type: string
+        default: .
+      test-filter:
+        type: string
+        default: ''
+permissions:
+  contents: read
+jobs:
+  build:
+    # Invalid selections run only a rejection step on a standard hosted runner.
+    runs-on: ${{ contains(fromJSON('["ubuntu-latest","windows-latest","macos-latest"]'), inputs.runner) && inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      - name: Validate runner
+        shell: pwsh
+        env:
+          REQUESTED_RUNNER: ${{ inputs.runner }}
+        run: |
+          if ($env:REQUESTED_RUNNER -notin @('ubuntu-latest', 'windows-latest', 'macos-latest')) { throw 'Only standard GitHub-hosted runners are supported' }
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Build and test
+        shell: pwsh
+        env:
+          BUILD_PROJECT: ${{ inputs.project }}
+          TEST_FILTER: ${{ inputs.test-filter }}
+        run: |
+          if ($env:BUILD_PROJECT.StartsWith('-')) { throw 'Project cannot be a command option' }
+          dotnet build $env:BUILD_PROJECT --configuration Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $testArgs = @('test', $env:BUILD_PROJECT, '--configuration', 'Release', '--no-build')
+          if ($env:TEST_FILTER) { $testArgs += @('--filter', $env:TEST_FILTER) }
+          & dotnet @testArgs
+          exit $LASTEXITCODE

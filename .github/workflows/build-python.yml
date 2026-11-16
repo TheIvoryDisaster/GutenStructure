@@ -1,0 +1,36 @@
+name: Reusable Python build
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: '3.12'
+      requirements:
+        type: string
+        default: ''
+      test-command:
+        description: Repository-owned test command; runs only in an unprivileged job.
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install dependencies
+        env:
+          REQUIREMENTS: ${{ inputs.requirements }}
+        run: |
+          if [ -n "$REQUIREMENTS" ]; then python -m pip install -r "$REQUIREMENTS"; fi
+      - name: Run repository checks
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash --noprofile --norc -e -o pipefail -c "$TEST_COMMAND"
