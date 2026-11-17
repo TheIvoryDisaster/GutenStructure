@@ -52,6 +52,8 @@ def stage(archive, output, expected_sha256, package_id, item_id):
         if len(roots) != 1:
             raise ValueError('Expected one top-level mod folder')
         root = next(iter(roots))
+        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{0,120}', root):
+            raise ValueError('Mod root is not safe for VDF staging')
         def bounded(relative, limit):
             info = source.getinfo(root + '/' + relative)
             if info.file_size > limit:

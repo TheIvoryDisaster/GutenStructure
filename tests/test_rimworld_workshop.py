@@ -50,6 +50,7 @@ class RimWorldWorkshopTests(unittest.TestCase):
             lambda fs: fs.update({'Mod/1.6/Assemblies/Assembly-CSharp.dll':b'bad'}),
             lambda fs: fs.update({'Mod/About/Preview.png':b'not PNG'}),
             lambda fs: fs.update({'Mod/Source/private.txt':b'bad'}),
+            lambda fs: fs.update({'BadRoot\"/file':b'bad'}),
         ]
         for change in changes:
             with self.subTest(change=change), tempfile.TemporaryDirectory() as folder:
