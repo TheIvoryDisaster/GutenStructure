@@ -47,8 +47,7 @@ def legacy_replacement(existing, default_branch):
     protected={'refs/heads/beta','refs/heads/main','refs/heads/release'}
     refs=desired['conditions']['ref_name']
     includes=refs.get('include',[])
-    if includes == ['~DEFAULT_BRANCH']:
-        includes=['refs/heads/'+default_branch]
+    includes=['refs/heads/'+default_branch if ref=='~DEFAULT_BRANCH' else ref for ref in includes]
     if not set(includes).issubset(protected) or refs.get('exclude'):
         raise ValueError('Unexpected custom branch scope: inspect rather than silently remove it')
     # User explicitly replaced review tiers; keep code scanning/signatures/checks in a separate rule.

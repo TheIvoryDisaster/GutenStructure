@@ -40,6 +40,9 @@ class BranchTierTests(unittest.TestCase):
         self.assertEqual(converted['conditions']['ref_name']['include'],['refs/heads/beta'])
         self.assertFalse(any(r['type']=='pull_request' for r in converted['rules']))
         self.assertTrue(any(r['type']=='code_scanning' for r in converted['rules']))
+        legacy['conditions']['ref_name']['include']=['~DEFAULT_BRANCH','refs/heads/beta']
+        converted=legacy_replacement(legacy,'main')
+        self.assertEqual(converted['conditions']['ref_name']['include'],['refs/heads/main','refs/heads/beta'])
         legacy['conditions']['ref_name']['include']=['refs/heads/fork']
         with self.assertRaises(ValueError): legacy_replacement(legacy,'beta')
 
