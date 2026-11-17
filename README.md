@@ -8,6 +8,10 @@ Standard GitHub-hosted runners build public repositories. Azure is reserved for 
 
 Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository CI, pinned to a reviewed **40-character commit SHA**. See [caller examples](examples/README.md). These workflows have read-only repository permissions, no Azure authentication, no artifact publication, and no persisted checkout credentials. Repository build/test code is untrusted.
 
+## Reusable mod packaging
+
+`.github/workflows/package-meitou-mod.yml` packs one Meitou code mod and publishes it as a GitHub Release asset in the **calling** repository: a beta channel (immutable `<slug>-<version>-beta.<commit>` prereleases plus a rolling `<slug>-beta`) and a release channel (`<slug>-v<version>`, behind the caller's `release-gate.yml` job). The build runs in a read-only job; the publish job checks out nothing, runs no caller code and uses only the caller's own `GITHUB_TOKEN` with `contents: write`. It accepts no secrets, so no personal or GutenStructure credential reaches organization repositories. See [caller examples](examples/README.md).
+
 ## Infrastructure and publishing
 
 - [Build inventory](docs/build-inventory.md)
