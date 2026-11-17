@@ -13,11 +13,11 @@ class ReleasePolicyTests(unittest.TestCase):
         self.assertTrue(review["require_code_owner_review"])
         self.assertTrue(review["dismiss_stale_reviews_on_push"])
         self.assertEqual(policy["bypass_actors"], [])
-        self.assertEqual(policy["conditions"]["ref_name"]["include"], ["refs/heads/main", "refs/heads/release"])
+        self.assertEqual(policy["conditions"]["ref_name"]["include"], ["refs/heads/release"])
 
     def test_explicit_seven_repository_plan(self):
         plan = validate_plan(json.loads(Path("backlog/releases.json").read_text()))
-        self.assertEqual(len(plan["repositories"]), 7)
+        self.assertEqual(len(plan["repositories"]), 8)
         plan["repositories"][0]["repository"] = "other-owner/repository"
         with self.assertRaises(ValueError):
             validate_plan(plan)

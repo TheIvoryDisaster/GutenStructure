@@ -45,6 +45,13 @@
       ]
     },
     {
+      "repository": "Meitou-Modding-Ecosystem/KenshiOracle",
+      "source": "main",
+      "checks": [
+        "Release readiness"
+      ]
+    },
+    {
       "repository": "TheIvoryDisaster/GutenStructure",
       "source": "main",
       "checks": [
@@ -53,5 +60,7 @@
       ]
     }
   ],
-  "reconcile_future_public_repositories": true
+  "reconcile_future_public_repositories": true,
+  "policy_version": 2,
+  "codeowner_self_merge_team": "super-maintainers"
 }
