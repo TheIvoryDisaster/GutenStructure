@@ -52,3 +52,5 @@ Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconci
 Authors can call the [author-owned reusable publisher](docs/author-publisher.md) from their own personal repositories. Nexus is explicit opt-in with credentials kept in the author's environment; Steam remains preview-only. The beta PR requires owner testing before production promotion.
 
 For adoption in your own repository, start with the [copyable caller](examples/author-publisher/publish.yml) and [setup, extension and troubleshooting guide](docs/author-publisher.md). Agents should use the dedicated [author publishing skill](.agents/skills/author-publishing/SKILL.md).
+
+[RimWorld Workshop preparation](docs/rimworld-workshop.md) supports existing releases in a personally owned caller repository, including private sources. It validates/stages the release and generates a Workshop preview without any Steam credentials or upload operation.

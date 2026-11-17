@@ -26,3 +26,7 @@ The guide links Nexus's official individual-key/team CI guidance, API custody po
 ## Completion evidence
 
 Report the caller PR, exact reviewed pin, unresolved placeholders, environment protection evidence where readable, preview checks and live-test status separately. Distinguish Nexus opt-in capability from an actual upload; `both` means Nexus plus Steam preview, not two successful uploads. Record that rerun uploads are blocked but fresh dispatches can still duplicate a version. Leave production promotion pending required owner feedback and never fabricate a receipt or successful game test.
+
+## RimWorld preparation variant
+
+Read `docs/rimworld-workshop.md` and `.github/workflows/rimworld-workshop-preview.yml` for RimWorld. This separate adapter reads an existing release from the personal caller repository (private supported with caller read-only GITHUB_TOKEN), validates About.xml/PublishedFileId/preview/assemblies and produces a no-login staging preview. Do not send private payloads to public central artifacts. Default-branch ancestry is checked, not organization release-review policy; do not claim approval enforcement from ancestry alone. No Steam credentials are requested or consumed. Proposed environment/credential names in the guide are future setup only. Steam Guard/session authorization, permitted automation, ownership and unlisted visibility preservation remain prerequisites for any later live adapter. Retain beta owner testing for changes needing personal verification.

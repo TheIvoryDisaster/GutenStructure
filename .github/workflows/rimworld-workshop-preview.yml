@@ -1,0 +1,60 @@
+name: Prepare RimWorld Workshop update (no Steam login)
+on:
+  workflow_call:
+    inputs:
+      release-tag:
+        type: string
+        required: true
+      asset-id:
+        type: string
+        required: true
+      expected-sha256:
+        type: string
+        required: true
+      package-id:
+        type: string
+        required: true
+      workshop-item-id:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: 52eccad8ac3f6f233f9c0bc9fd47d921da4b001e
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Fetch the caller release and validate the Workshop package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+          ASSET_ID: ${{ inputs.asset-id }}
+          EXPECTED_SHA256: ${{ inputs.expected-sha256 }}
+          PACKAGE_ID: ${{ inputs.package-id }}
+          ITEM_ID: ${{ inputs.workshop-item-id }}
+        run: |
+          python -m scripts.rimworld_workshop --release-tag "$RELEASE_TAG" --asset-id "$ASSET_ID" \
+            --sha256 "$EXPECTED_SHA256" --package-id "$PACKAGE_ID" --item-id "$ITEM_ID"
+      - name: Save preview in the caller repository only
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: rimworld-workshop-preview
+          path: workshop-preview/
+          retention-days: 1
+          if-no-files-found: error
+      - name: Summarize the boundary
+        run: |
+          {
+            echo '## RimWorld Workshop preparation passed'
+            echo 'Caller release metadata, tag ancestry, asset digest, ZIP contents, package ID and existing Workshop ID were checked.'
+            echo 'No Steam login, network requests to Steam or upload commands were run. Remote ownership and visibility were not verified.'
+            echo 'The VDF refers to this runner staging path. Regenerate it for a local path before any future approved upload.'
+          } >> "$GITHUB_STEP_SUMMARY"
