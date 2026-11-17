@@ -10,11 +10,7 @@ from pathlib import Path
 from scripts.release_gate import ALLOWED, allowed_repository
 
 
-class GitHubFailure(RuntimeError):
-    def __init__(self, status):
-        self.status = status
-        super().__init__(f"GitHub returned HTTP {status}; verify administration permission and repository setup")
-
+from scripts.github_errors import GitHubFailure
 
 def optional(api, path):
     try:

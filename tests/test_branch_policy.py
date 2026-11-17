@@ -6,6 +6,11 @@ from scripts.apply_release_policy import GitHubFailure
 
 
 class BranchTierTests(unittest.TestCase):
+    def test_cli_entrypoint_uses_the_same_api_error_type(self):
+        import runpy
+        scope=runpy.run_path('scripts/apply_release_policy.py',run_name='policy_cli_boundary_test')
+        self.assertIs(scope['GitHubFailure'],GitHubFailure)
+
     def test_only_main_beta_allow_selected_team_review_bypass(self):
         safety,owner,release=policies(['build'],123)
         self.assertEqual(safety['bypass_actors'],[])
