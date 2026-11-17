@@ -211,7 +211,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: a674b4c6e9b18aa6d7b44ac7c25b7b1cf44ad1fb
+          ref: 60f35c0b3307016a57fb4a9fa5ef9c1594ce4144
           path: _publisher
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
