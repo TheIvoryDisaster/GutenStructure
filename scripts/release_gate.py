@@ -18,6 +18,17 @@ def allowed_repository(repository):
     return repository == "TheIvoryDisaster/GutenStructure" or bool(re.fullmatch(r"Meitou-Modding-Ecosystem/[A-Za-z0-9_.-]+", repository))
 
 
+def not_bypassable(ruleset):
+    """GitHub returns bypass_actors only to callers who can edit the ruleset, so the workflow token sees no field.
+
+    A hidden list is accepted: the scheduled "Configure release branch protections" run resets it to empty with an
+    administration token. A visible list must be empty, and the calling token itself must never be able to bypass.
+    """
+    if ruleset.get("current_user_can_bypass", "never") != "never":
+        return False
+    return ruleset.get("bypass_actors", []) == []
+
+
 def validate_rules(rules, details, personal=False):
     """At least one enforced ruleset must impose both reviews without bypass actors."""
     for rule in rules:
@@ -27,7 +38,7 @@ def validate_rules(rules, details, personal=False):
         if not personal and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
             continue
         ruleset = details(rule["ruleset_id"])
-        if ruleset.get("enforcement") == "active" and ruleset.get("bypass_actors") == []:
+        if ruleset.get("enforcement") == "active" and not_bypassable(ruleset):
             return
     raise RuntimeError("Release branch lacks the required enforced PR/review policy without bypass actors")
 
