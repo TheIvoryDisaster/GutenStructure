@@ -62,3 +62,9 @@ jobs:
 ```
 
 The Python command is intentionally repository-controlled and executes only on an unprivileged GitHub-hosted runner. Do not reuse this interface in publishing jobs.
+
+### Meitou packaging publication safeguards
+
+The beta hardening update rechecks production eligibility in the isolated publisher immediately before writing: tag format alone is insufficient. Callers must retain their central release-gate prerequisite. Beta snapshots require a beta-branch source; only a run still at the current beta head may update the rolling release. A slow old build may publish its versioned snapshot but cannot roll beta backward.
+
+An existing versioned release is reused only after verifying its source tag, channel, exact ZIP digest and checksum sidecar presence. If rebuilt bytes differ (including ZIP timestamps), the rerun fails clearly without replacing the canonical artifact or rolling release. Consume workflow outputs only after success. Both rolling ZIP names get checksum sidecars. These changes require beta review/testing before production adoption.

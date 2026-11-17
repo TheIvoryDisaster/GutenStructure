@@ -10,7 +10,7 @@
 # - beta: prerelease <slug>-<version>-beta.<commit> (one per run, never moved) and rolling prerelease <slug>-beta whose asset is
 #   always <mod-folder>-beta.zip. Neither tag matches <slug>-v*, so tag-triggered production workflows never fire for them.
 # - release: release <slug>-v<version> for the pushed tag; the tag must equal that name. Production callers put the central
-#   release-gate.yml job in front of this one (needs:), so the tag must be the protected release head.
+#   release-gate.yml job in front; the publisher also rechecks the protected release head immediately before writing.
 name: Package Meitou mod
 
 on:
@@ -71,6 +71,9 @@ jobs:
           [[ "$MOD_FOLDER" =~ ^[A-Za-z][A-Za-z0-9_]{0,63}$ ]] || { echo "bad mod-folder" >&2; exit 1; }
           [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] || { echo "bad slug" >&2; exit 1; }
           [[ "$CHANNEL" == beta || "$CHANNEL" == release ]] || { echo "channel must be beta or release" >&2; exit 1; }
+          if [ "$CHANNEL" = beta ]; then
+            [ "$GITHUB_REF" = refs/heads/beta ] || { echo "beta publishing requires beta" >&2; exit 1; }
+          fi
           [[ -z "$TEST_PROJECT" || "$TEST_PROJECT" =~ ^[A-Za-z0-9_./]+$ && "$TEST_PROJECT" != -* ]] || { echo "bad test-project" >&2; exit 1; }
 
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -204,20 +207,17 @@ jobs:
           [ -f "$zip" ] || { echo "$zip missing" >&2; exit 1; }
           echo "$SHA256  $zip" | sha256sum -c -
 
-      - name: Publish versioned release
-        run: |
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "$TAG is already published; not replacing it"
-            exit 0
-          fi
-          flags=(--target "$GITHUB_SHA" --title "$MOD_FOLDER $LABEL" --notes-file dist/notes.md)
-          [ "$CHANNEL" = beta ] && flags+=(--prerelease --latest=false)
-          gh release create "$TAG" "dist/$MOD_FOLDER-$LABEL.zip" "dist/$MOD_FOLDER-$LABEL.zip.sha256" "${flags[@]}"
-
-      - name: Move rolling beta
-        if: inputs.channel == 'beta'
-        run: |
-          cp "dist/$MOD_FOLDER-$LABEL.zip" "dist/$MOD_FOLDER-beta.zip"
-          gh release delete "$SLUG-beta" --cleanup-tag --yes || true
-          gh release create "$SLUG-beta" "dist/$MOD_FOLDER-beta.zip" "dist/$MOD_FOLDER-$LABEL.zip" \
-            --target "$GITHUB_SHA" --prerelease --latest=false --title "$MOD_FOLDER beta ($LABEL)" --notes-file dist/notes.md
+      - name: Check out only the reviewed publisher implementation
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: 3cd6ead7f626e817df135da6423c78e5fabbfaa2
+          path: _publisher
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Verify eligibility and publish without executing caller source
+        env:
+          PYTHONPATH: ${{ github.workspace }}/_publisher
+        run: python -m scripts.publish_meitou_package
