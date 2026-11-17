@@ -1,0 +1,223 @@
+# Reusable: packages one Meitou code mod from the calling repository and publishes it as a GitHub Release asset.
+#
+# - package (read-only token, no persisted credentials): builds and tests the caller's code, packs <mod-folder>/ as it goes into
+#   Kenshi/mods/ (the mod's DLL, PDB, meitou.json and <mod-folder>.mod; the game supplies its own assemblies) and uploads the zip
+#   and its SHA-256 as a workflow artifact. The version comes only from <mod-folder>/meitou.json.
+# - publish (contents: write on the caller's own GITHUB_TOKEN): downloads that artifact and creates the release. It checks out no
+#   code and runs nothing from the caller. No secrets are accepted; callers must not pass secrets: inherit.
+#
+# Channels:
+# - beta: prerelease <slug>-<version>-beta.<commit> (one per run, never moved) and rolling prerelease <slug>-beta whose asset is
+#   always <mod-folder>-beta.zip. Neither tag matches <slug>-v*, so tag-triggered production workflows never fire for them.
+# - release: release <slug>-v<version> for the pushed tag; the tag must equal that name. Production callers put the central
+#   release-gate.yml job in front of this one (needs:), so the tag must be the protected release head.
+name: Package Meitou mod
+
+on:
+  workflow_call:
+    inputs:
+      mod-folder:
+        description: Folder holding the mod's .csproj and meitou.json; also the DLL's and the zip's name (e.g. RivalryCore).
+        type: string
+        required: true
+      slug:
+        description: Tag prefix (e.g. rivalry-core).
+        type: string
+        required: true
+      channel:
+        description: beta or release.
+        type: string
+        required: true
+      test-project:
+        description: Project to test before packing; empty skips tests.
+        type: string
+        default: ''
+      empty-data-mod:
+        description: Add an empty <mod-folder>.mod when the build has none (a code mod without data). Otherwise a missing .mod fails.
+        type: boolean
+        default: false
+      dotnet-version:
+        type: string
+        default: 11.0.x
+    outputs:
+      tag:
+        description: The versioned tag published (snapshot tag on beta).
+        value: ${{ jobs.package.outputs.tag }}
+      sha256:
+        description: SHA-256 of the published zip.
+        value: ${{ jobs.package.outputs.sha256 }}
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      tag: ${{ steps.name.outputs.tag }}
+      label: ${{ steps.name.outputs.label }}
+      sha256: ${{ steps.pack.outputs.sha256 }}
+    steps:
+      - name: Validate inputs
+        env:
+          MOD_FOLDER: ${{ inputs.mod-folder }}
+          SLUG: ${{ inputs.slug }}
+          CHANNEL: ${{ inputs.channel }}
+          TEST_PROJECT: ${{ inputs.test-project }}
+        run: |
+          [[ "$MOD_FOLDER" =~ ^[A-Za-z][A-Za-z0-9_]{0,63}$ ]] || { echo "bad mod-folder" >&2; exit 1; }
+          [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{0,63}$ ]] || { echo "bad slug" >&2; exit 1; }
+          [[ "$CHANNEL" == beta || "$CHANNEL" == release ]] || { echo "channel must be beta or release" >&2; exit 1; }
+          [[ -z "$TEST_PROJECT" || "$TEST_PROJECT" =~ ^[A-Za-z0-9_./]+$ && "$TEST_PROJECT" != -* ]] || { echo "bad test-project" >&2; exit 1; }
+
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+
+      - name: Version and tag
+        id: name
+        env:
+          MOD_FOLDER: ${{ inputs.mod-folder }}
+          SLUG: ${{ inputs.slug }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          version=$(jq -er .version "$MOD_FOLDER/meitou.json")
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "meitou.json version '$version' is not SemVer" >&2; exit 1; }
+          if [ "$CHANNEL" = release ]; then
+            label="$version"
+            tag="$SLUG-v$version"
+            [ "$GITHUB_REF" = "refs/tags/$tag" ] || { echo "release runs only for tag $tag (got $GITHUB_REF)" >&2; exit 1; }
+          else
+            label="$version-beta.$(git rev-parse --short=7 HEAD)"
+            tag="$SLUG-$label"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        if: inputs.test-project != ''
+        env:
+          TEST_PROJECT: ${{ inputs.test-project }}
+        run: dotnet test "$TEST_PROJECT" -c Release
+
+      - name: Pack
+        id: pack
+        env:
+          MOD_FOLDER: ${{ inputs.mod-folder }}
+          LABEL: ${{ steps.name.outputs.label }}
+          EMPTY_DATA_MOD: ${{ inputs.empty-data-mod }}
+        run: |
+          out="$RUNNER_TEMP/package/$MOD_FOLDER"
+          dotnet publish "$MOD_FOLDER" -c Release -o "$out"
+
+          # Only the mod's own files: the game supplies its assemblies.
+          find "$out" -mindepth 1 -maxdepth 1 ! -type f -exec rm -rf {} +
+          find "$out" -maxdepth 1 -type f ! -name "$MOD_FOLDER.dll" ! -name "$MOD_FOLDER.pdb" ! -name "$MOD_FOLDER.mod" ! -name meitou.json -delete
+
+          # The game loads a code mod through its data mod. An empty one is an FCS V17 header with no records: type 17, header
+          # length 20, version 1, four empty strings (author, description, dependencies, references), next id 0, record count 0.
+          if [ ! -f "$out/$MOD_FOLDER.mod" ]; then
+            [ "$EMPTY_DATA_MOD" = true ] || { echo "$MOD_FOLDER.mod missing from the build; set empty-data-mod for a mod without data" >&2; exit 1; }
+            { printf '\x11\0\0\0\x14\0\0\0\x01\0\0\0'; head -c 24 /dev/zero; } > "$out/$MOD_FOLDER.mod"
+          fi
+          for f in "$MOD_FOLDER.dll" meitou.json "$MOD_FOLDER.mod"; do
+            [ -f "$out/$f" ] || { echo "$f missing from the package" >&2; exit 1; }
+          done
+
+          mkdir -p dist
+          zip="$PWD/dist/$MOD_FOLDER-$LABEL.zip"
+          (cd "$RUNNER_TEMP/package" && zip -r -q -X "$zip" "$MOD_FOLDER")
+          unzip -l "$zip"
+          sha=$(sha256sum "$zip" | cut -d' ' -f1)
+          echo "$sha  $MOD_FOLDER-$LABEL.zip" > "dist/$MOD_FOLDER-$LABEL.zip.sha256"
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Notes
+        env:
+          MOD_FOLDER: ${{ inputs.mod-folder }}
+          VERSION: ${{ steps.name.outputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          SHA256: ${{ steps.pack.outputs.sha256 }}
+        run: |
+          engine=""
+          if [ -f .gitmodules ]; then
+            engine=$(git submodule status --recursive | awk '{sha=$1; sub(/^[-+U]/, "", sha); printf "- Submodule %s at %s\n", $2, sha}')
+          fi
+          {
+            if [ "$CHANNEL" = beta ]; then
+              echo "$MOD_FOLDER $VERSION from \`$GITHUB_REF_NAME\` (prerelease). Pin this tag, not the version: later beta builds can carry the same version."
+            else
+              echo "$MOD_FOLDER $VERSION."
+            fi
+            echo
+            echo "- Source: $GITHUB_REPOSITORY@$GITHUB_SHA"
+            [ -n "$engine" ] && echo "$engine"
+            echo "- Zip SHA-256: \`$SHA256\`"
+            echo
+            echo "Extract into \`Kenshi/mods/\` so the files sit in \`Kenshi/mods/$MOD_FOLDER/\`, and enable it in the launcher."
+          } > dist/notes.md
+          cat dist/notes.md
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mod-package
+          path: dist/
+          retention-days: 3
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: package-meitou-mod-${{ github.repository }}-${{ inputs.slug }}-${{ inputs.channel }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      MOD_FOLDER: ${{ inputs.mod-folder }}
+      SLUG: ${{ inputs.slug }}
+      CHANNEL: ${{ inputs.channel }}
+      TAG: ${{ needs.package.outputs.tag }}
+      LABEL: ${{ needs.package.outputs.label }}
+      SHA256: ${{ needs.package.outputs.sha256 }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: mod-package
+          path: dist
+
+      - name: Check the artifact
+        run: |
+          zip="dist/$MOD_FOLDER-$LABEL.zip"
+          [ -f "$zip" ] || { echo "$zip missing" >&2; exit 1; }
+          echo "$SHA256  $zip" | sha256sum -c -
+
+      - name: Publish versioned release
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "$TAG is already published; not replacing it"
+            exit 0
+          fi
+          flags=(--target "$GITHUB_SHA" --title "$MOD_FOLDER $LABEL" --notes-file dist/notes.md)
+          [ "$CHANNEL" = beta ] && flags+=(--prerelease --latest=false)
+          gh release create "$TAG" "dist/$MOD_FOLDER-$LABEL.zip" "dist/$MOD_FOLDER-$LABEL.zip.sha256" "${flags[@]}"
+
+      - name: Move rolling beta
+        if: inputs.channel == 'beta'
+        run: |
+          cp "dist/$MOD_FOLDER-$LABEL.zip" "dist/$MOD_FOLDER-beta.zip"
+          gh release delete "$SLUG-beta" --cleanup-tag --yes || true
+          gh release create "$SLUG-beta" "dist/$MOD_FOLDER-beta.zip" "dist/$MOD_FOLDER-$LABEL.zip" \
+            --target "$GITHUB_SHA" --prerelease --latest=false --title "$MOD_FOLDER beta ($LABEL)" --notes-file dist/notes.md
