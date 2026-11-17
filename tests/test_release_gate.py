@@ -20,6 +20,13 @@ class ReleaseGateTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 validate_rules([self.rule()], lambda _: detail)
 
+    def test_bypass_list_hidden_from_workflow_token_is_accepted(self):
+        validate_rules([self.rule()], lambda _: {"enforcement": "active", "current_user_can_bypass": "never"})
+
+    def test_bypassing_workflow_token_is_rejected(self):
+        with self.assertRaises(RuntimeError):
+            validate_rules([self.rule()], lambda _: {"enforcement": "active", "current_user_can_bypass": "always"})
+
     def test_other_branches_and_old_release_commits_are_rejected(self):
         repository = "Meitou-Modding-Ecosystem/MeitouClient"
         def api(path):
