@@ -21,6 +21,32 @@ jobs:
     uses: TheIvoryDisaster/GutenStructure/.github/workflows/build-dotnet.yml@REVIEWED_COMMIT_SHA
 ```
 
+MeitouMods framework prereleases (`.github/workflows/rivalry-core-beta.yml`), on pushes to `beta`:
+
+```yaml
+name: Rivalry Core beta
+on:
+  push:
+    branches: [beta]
+    paths: [RivalryCore/**, engine, Directory.Build.props, .github/workflows/rivalry-core-beta.yml]
+permissions:
+  contents: read
+jobs:
+  rivalry-core:
+    permissions:
+      contents: write
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/package-meitou-mod.yml@REVIEWED_COMMIT_SHA
+    with:
+      mod-folder: RivalryCore
+      slug: rivalry-core
+      channel: beta
+      test-project: RivalryCore.Tests
+      empty-data-mod: true
+```
+
+For production, a tag-triggered caller runs `release-gate.yml` first and calls the same workflow with `channel: release` and `needs: [release-gate]`.
+Grant `contents: write` only to the calling job, and never pass `secrets:`.
+
 MotionLab, after committing a reviewed dependency requirements file:
 
 ```yaml
