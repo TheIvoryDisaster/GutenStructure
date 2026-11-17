@@ -27,6 +27,8 @@ Use `.github/workflows/build-dotnet.yml`, `build-python.yml`, or the UI compatib
 
 Run CI on development PRs/pushes and on PRs/pushes targeting `release`. Define a final `Release readiness` job that succeeds only when every required build/test/package prerequisite succeeded; skipped, cancelled or failed dependencies must not count as success. Keep the existing required check names until the ruleset migration is complete. Pin third-party actions by commit SHA, use read-only tokens and disable persisted checkout credentials. Cancel superseded PR builds.
 
+For framework consumers, follow [dependency consumer CI](../../../docs/dependency-consumer-ci.md). Ensure the workflow is present in the beta PR merge tree, not just the default branch, and preserve required check names. Distinguish engine-free baseline checks from real-framework present/absent integration tests. Use immutable artifact tags and pinned digests; lock format and automatic downstream triggering remain separate design work in MeitouMods #62.
+
 ## 3. Bootstrap release and ownership
 
 Create `release` from an explicitly identified stable commit. For a new/empty repo, first establish its initial source commit. Ensure GitHub's effective CODEOWNERS file is valid and has a fallback `*` owner covering all paths. Preserve existing path-specific ownership. Use the real repository's current users/teams; do not invent reviewers or silently substitute organization owners for code owners. A new bootstrap can name the personal owner as a fallback only when authorized; it does not authorize subsequent promotions.
