@@ -3,8 +3,8 @@
 # - package (read-only token, no persisted credentials): builds and tests the caller's code, packs <mod-folder>/ as it goes into
 #   Kenshi/mods/ (the mod's DLL, PDB, meitou.json and <mod-folder>.mod; the game supplies its own assemblies) and uploads the zip
 #   and its SHA-256 as a workflow artifact. The version comes only from <mod-folder>/meitou.json.
-# - publish (contents: write on the caller's own GITHUB_TOKEN): downloads that artifact and creates the release. It checks out no
-#   code and runs nothing from the caller. No secrets are accepted; callers must not pass secrets: inherit.
+# - publish (contents: write on the caller's own GITHUB_TOKEN): downloads that artifact and creates the release. It checks out only a pinned central
+#   publisher implementation and runs nothing from the caller. No secrets are accepted; callers must not pass secrets: inherit.
 #
 # Channels:
 # - beta: prerelease <slug>-<version>-beta.<commit> (one per run, never moved) and rolling prerelease <slug>-beta whose asset is
@@ -211,7 +211,7 @@ jobs:
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 3cd6ead7f626e817df135da6423c78e5fabbfaa2
+          ref: a674b4c6e9b18aa6d7b44ac7c25b7b1cf44ad1fb
           path: _publisher
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
