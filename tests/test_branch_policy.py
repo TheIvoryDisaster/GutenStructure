@@ -40,6 +40,9 @@ class BranchTierTests(unittest.TestCase):
         self.assertEqual(converted['conditions']['ref_name']['include'],['refs/heads/beta'])
         self.assertFalse(any(r['type']=='pull_request' for r in converted['rules']))
         self.assertTrue(any(r['type']=='code_scanning' for r in converted['rules']))
+        legacy['conditions']['ref_name']['include']=['~DEFAULT_BRANCH','refs/heads/beta']
+        converted=legacy_replacement(legacy,'main')
+        self.assertEqual(converted['conditions']['ref_name']['include'],['refs/heads/main','refs/heads/beta'])
         legacy['conditions']['ref_name']['include']=['refs/heads/fork']
         with self.assertRaises(ValueError): legacy_replacement(legacy,'beta')
 
@@ -54,6 +57,7 @@ class BranchTierTests(unittest.TestCase):
                 return {'id':123,'slug':'super-maintainers'}
             if path.startswith('orgs/') and '/rulesets' in path:raise GitHubFailure(403)
             if '/repos?' in path:return [{'full_name':'Meitou-Modding-Ecosystem/NewMod','default_branch':'main','owner':{'id':357134506},'private':False}]
+            if path.endswith('/actions/permissions'):return {'enabled':True}
             if '/branches/' in path and path.endswith('/protection'):raise GitHubFailure(404)
             if '/branches/' in path:return {'commit':{'sha':'test'}}
             if '/branches?' in path:return [{'name':'main','protected':False}]
@@ -78,4 +82,15 @@ class BranchTierTests(unittest.TestCase):
         api,writes=self.fake(team_access=False)
         with self.assertRaises(ValueError):
             synchronize(api,{'branch':'release','repositories':[],'policy_version':2,'codeowner_self_merge_team':'super-maintainers'},apply=True)
+        self.assertEqual(writes,[])
+
+
+class AdministrationPreflightTests(unittest.TestCase):
+    def test_missing_new_repository_administration_blocks_all_writes(self):
+        api,writes=BranchTierTests().fake()
+        def denied(path,method='GET',body=None):
+            if path.endswith('/actions/permissions'): raise GitHubFailure(403)
+            return api(path,method=method,body=body)
+        with self.assertRaises(GitHubFailure):
+            synchronize(denied,{'branch':'release','repositories':[],'policy_version':2,'codeowner_self_merge_team':'super-maintainers'},apply=True)
         self.assertEqual(writes,[])

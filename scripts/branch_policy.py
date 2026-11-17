@@ -47,8 +47,7 @@ def legacy_replacement(existing, default_branch):
     protected={'refs/heads/beta','refs/heads/main','refs/heads/release'}
     refs=desired['conditions']['ref_name']
     includes=refs.get('include',[])
-    if includes == ['~DEFAULT_BRANCH']:
-        includes=['refs/heads/'+default_branch]
+    includes=['refs/heads/'+default_branch if ref=='~DEFAULT_BRANCH' else ref for ref in includes]
     if not set(includes).issubset(protected) or refs.get('exclude'):
         raise ValueError('Unexpected custom branch scope: inspect rather than silently remove it')
     # User explicitly replaced review tiers; keep code scanning/signatures/checks in a separate rule.
@@ -91,6 +90,9 @@ def synchronize(api, plan, apply=False):
         metadata=api(f'repos/{repo}')
         if metadata.get('owner',{}).get('id') != 357134506 or metadata.get('private'):
             raise ValueError('Unexpected repository owner/visibility')
+        # This endpoint requires repository Administration read, unlike public rule reads.
+        # Catch excluded/new repositories before any settings are written.
+        api(f'repos/{repo}/actions/permissions')
         existing=api(f'repos/{repo}/rulesets?includes_parents=false&per_page=100')
         if len(existing)>=100: raise ValueError('Incomplete ruleset inventory')
         details=[api(f'repos/{repo}/rulesets/{r["id"]}') for r in existing]
