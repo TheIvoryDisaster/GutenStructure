@@ -30,3 +30,12 @@ Organization-wide rulesets require GitHub Team or Enterprise. The free-tier fall
 The administration job uses the `Default` environment. Enable its scheduled reconciliation only after this workflow has received the requested release-policy reviews. It does not bootstrap unknown source code, invent code owners, or weaken existing stronger rules.
 
 Personal testing lane: open a conceptually grouped GutenStructure PR into beta, run automated checks there, and await owner feedback before promotion to main or release. Routine changes may be validated and merged by agents through PRs without formal author self-approval. Never apply that zero-reviewer exception to the organization.
+
+
+## Current branch policy (revision 2; supersedes earlier main review counts)
+
+Ordinary branches are unprotected. `beta` is ready for playtesting and `main` is tested/ready to ship: both require a PR and code-owner review, with the selected `super-maintainers` team allowed to self-merge via **PR-only review-rule bypass**. GitHub does not support author self-approval. CI/safety is a separate rule without bypass; no direct push, force push or branch deletion is enabled by the exception. `release` alone retains two approvals including an applicable CODEOWNER, with no bypass. Production pipelines continue to use release, not main.
+
+The team can bypass beta/main review on any PR, not just its own: GitHub does not support an author-conditional bypass. Treat its membership as a trusted repository-wide owner role. Team write access and valid CODEOWNERS entries must be established separately; path-specific owners are preserved. Missing CODEOWNERS is a setup blocker, not proof that owner review works.
+
+The reconciler uses the Default-environment Meitou administration token to resolve the team and audit/apply per-repository rules. It attempts all-current/future-repository organization rulesets when the org API is accessible; GitHub Team/Enterprise and organization Administration permission are needed. API denial does not prove the plan is Free. It emits organization import templates and uses daily public-repository reconciliation as the fallback. Private repositories require suitable execution/plan/credential support; do not disclose their names through public logs. Classic protections or unknown scopes require explicit migration review.
