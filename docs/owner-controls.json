@@ -1,5 +1,5 @@
 {
-  "name": "Personal pull-request workflow",
+  "name": "Stable branch protection",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [],
@@ -37,6 +37,10 @@
         "required_status_checks": [
           {
             "context": "terraform",
+            "integration_id": 15368
+          },
+          {
+            "context": "automation",
             "integration_id": 15368
           }
         ]
