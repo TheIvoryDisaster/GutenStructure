@@ -8,7 +8,7 @@ from scripts.release_gate import MissingResource
 
 
 class PackagePublicationTests(unittest.TestCase):
-    def setup_case(self,folder,existing=False,head=None,existing_digest=None):
+    def setup_case(self,folder,existing=False,head=None,existing_digest=None,rolling_head=None):
         self.sha='a'*40
         self.label='0.6.0-beta.aaaaaaa'
         self.tag='framework-'+self.label
@@ -20,13 +20,17 @@ class PackagePublicationTests(unittest.TestCase):
         (path/'notes.md').write_text('fixture notes')
         self.commands=[]
         def api(route):
-            if '/compare/' in route:return {'status':'identical' if head is None else 'ahead'}
+            if '/compare/' in route:
+                if rolling_head and route.endswith(rolling_head+'...'+self.sha):return {'status':'behind' if rolling_head=='b'*40 else 'ahead'}
+                return {'status':'identical' if head is None else 'ahead'}
             if route.endswith('/branches/beta'):return {'commit':{'sha':head or self.sha}}
             if '/releases/tags/' in route:
                 tag=route.rsplit('/',1)[1]
+                if tag=='framework-beta' and rolling_head:return {'id':2,'tag_name':tag,'draft':False,'prerelease':True}
                 if existing and tag==self.tag:return {'id':1,'tag_name':tag,'draft':False,'prerelease':True}
                 raise MissingResource('fixture')
             if '/git/ref/tags/' in route:
+                if route.endswith('/framework-beta') and rolling_head:return {'object':{'type':'commit','sha':rolling_head}}
                 if existing:return {'object':{'type':'commit','sha':self.sha}}
                 raise MissingResource('fixture')
             if '/releases/1/assets?' in route:return [
@@ -50,14 +54,14 @@ class PackagePublicationTests(unittest.TestCase):
 
     def test_old_build_publishes_snapshot_but_never_rolls_back_pointer(self):
         with tempfile.TemporaryDirectory() as folder:
-            api,path=self.setup_case(folder,head='b'*40)
+            api,path=self.setup_case(folder,head='b'*40,rolling_head='b'*40)
             result=self.call(api,path)
             self.assertEqual(len(self.commands),1)
             self.assertFalse(result['rolling_updated'])
 
     def test_equal_existing_snapshot_is_verified_not_recreated(self):
         with tempfile.TemporaryDirectory() as folder:
-            api,path=self.setup_case(folder,existing=True,head='b'*40)
+            api,path=self.setup_case(folder,existing=True,head='b'*40,rolling_head='b'*40)
             result=self.call(api,path)
             self.assertTrue(result['existing_verified'])
             self.assertEqual(self.commands,[])
@@ -114,3 +118,14 @@ class ProductionPositiveTests(unittest.TestCase):
             self.assertEqual(len(self.commands),1)
             self.assertNotIn('--prerelease',self.commands[0])
             gate.assert_called_once()
+
+
+class DocumentationOnlyAdvanceTests(unittest.TestCase):
+    setup_case=PackagePublicationTests.setup_case
+    call=PackagePublicationTests.call
+    def test_beta_docs_commit_does_not_suppress_newest_framework_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            api,path=self.setup_case(folder,head='b'*40,rolling_head='c'*40)
+            result=self.call(api,path)
+            self.assertTrue(result['rolling_updated'])
+            self.assertEqual(len(self.commands),3)

@@ -81,17 +81,26 @@ def publish(api,command,repository,commit,ref,folder,slug,channel,label,digest,d
         if beta:flags+=['--prerelease','--latest=false']
         command(['gh','release','create',tag,str(zip_path),str(sidecar),*flags])
     rolling=False
-    if beta and api(f'repos/{repository}/branches/beta')['commit']['sha']==commit:
-        alias=f'{folder}-beta.zip'
-        shutil.copyfile(zip_path,path/alias)
-        (path/(alias+'.sha256')).write_text(digest+'  '+alias+'\n')
+    if beta:
         rolling_tag=slug+'-beta'
-        if optional(api,f'repos/{repository}/releases/tags/{rolling_tag}'):
-            command(['gh','release','delete',rolling_tag,'--cleanup-tag','--yes'])
-        command(['gh','release','create',rolling_tag,str(path/alias),str(path/(alias+'.sha256')),
-            str(zip_path),str(sidecar),'--target',commit,'--prerelease','--latest=false',
-            '--title',folder+' beta ('+label+')','--notes-file',str(notes)])
-        rolling=True
+        previous=optional(api,f'repos/{repository}/releases/tags/{rolling_tag}')
+        advance=True
+        if previous:
+            previous_sha=resolve_tag(api,repository,rolling_tag)
+            relation=api(f'repos/{repository}/compare/{previous_sha}...{commit}').get('status')
+            if relation=='behind': advance=False
+            elif relation not in ('ahead','identical'):
+                raise ValueError('Rolling beta has divergent history; inspect before replacing it')
+        if advance:
+            alias=f'{folder}-beta.zip'
+            shutil.copyfile(zip_path,path/alias)
+            (path/(alias+'.sha256')).write_text(digest+'  '+alias+'\n')
+            if previous:
+                command(['gh','release','delete',rolling_tag,'--cleanup-tag','--yes'])
+            command(['gh','release','create',rolling_tag,str(path/alias),str(path/(alias+'.sha256')),
+                str(zip_path),str(sidecar),'--target',commit,'--prerelease','--latest=false',
+                '--title',folder+' beta ('+label+')','--notes-file',str(notes)])
+            rolling=True
     result={'tag':tag,'sha256':digest,'source_sha':commit,'existing_verified':bool(existing),'rolling_updated':rolling}
     print(json.dumps(result))
     return result
