@@ -49,7 +49,7 @@ def discover_repositories(api, selected):
 
 def desired_ruleset(checks, personal=False):
     return {"name": "Stable branch protection", "target": "branch", "enforcement": "active", "bypass_actors": [],
-        "conditions": {"ref_name": {"include": ["refs/heads/main", "refs/heads/release", "refs/heads/beta"] if personal else ["refs/heads/main", "refs/heads/release"], "exclude": []}},
+        "conditions": {"ref_name": {"include": ["refs/heads/main", "refs/heads/release", "refs/heads/beta"] if personal else ["refs/heads/release"], "exclude": []}},
         "rules": [{"type": "deletion"}, {"type": "non_fast_forward"},
           {"type": "pull_request", "parameters": {"required_approving_review_count": 0 if personal else 2,
             "dismiss_stale_reviews_on_push": True, "require_code_owner_review": not personal,
@@ -168,10 +168,15 @@ def main():
                      "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "GutenStructure-release-policy"})
         try:
             with urllib.request.urlopen(request, timeout=30) as response:
-                return json.load(response)
+                return None if response.status == 204 else json.load(response)
         except urllib.error.HTTPError as error:
             raise GitHubFailure(error.code) from None
-    print(json.dumps(synchronize(api, plan, args.target, args.apply), indent=2))
+    if args.target == "Meitou-Modding-Ecosystem" and plan.get("policy_version") == 2:
+        from scripts.branch_policy import synchronize as synchronize_tiers
+        report = synchronize_tiers(api, plan, args.apply)
+    else:
+        report = synchronize(api, plan, args.target, args.apply)
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
