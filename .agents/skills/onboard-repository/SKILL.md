@@ -37,14 +37,18 @@ Open configuration/promotion PRs to `release`. Do not cut production releases fr
 
 Use **Configure release branch protections** in GutenStructure (`main`, environment `Default`) to preview first, then apply the reviewed policy. Organization secret: `MEITOU_RELEASE_ADMIN_TOKEN`, owned by Meitou-Modding-Ecosystem with repository Administration read/write; choose All repositories for future-repository reconciliation. GutenStructure administration uses a separate personally scoped credential `GUTENSTRUCTURE_ADMIN_TOKEN`. Never print token values or pass either token to build jobs.
 
-Organization main/release rules:
+Organization branch policy revision 2:
 
-1. A pull request is required; direct/force pushes and deletion are blocked.
-2. **Two distinct approving reviewers, including at least one applicable CODEOWNER.** The owner approval counts toward the two, not as a third review. Native ownership rules may require multiple applicable owners when different owned paths are changed.
-3. Dismiss stale approvals, require approval after the last push, resolve review threads, and require up-to-date CI.
-4. No bypass actors, including administrators or bots.
+| Branch | Review policy |
+| --- | --- |
+| Ordinary branches (including master/fork) | No branch protection; do not rename development or mirror branches. |
+| beta | Content ready to playtest: PR and code-owner review. super-maintainers may merge their own PR through PR-only bypass of the review rule. |
+| main | Tested/ready-to-ship: same owner-only PR policy. |
+| release | Production source: two distinct approvals including an applicable CODEOWNER; no bypass. |
 
-In organization repositories, GitHub authors cannot approve their own PRs. An owner-authored PR cannot satisfy ownership review if that author is the only applicable owner. Report the blocker and arrange another eligible code owner/reviewer through legitimate reviewed changes; never lower review counts, add a bypass, impersonate a reviewer or merge via another API.
+GitHub cannot accept author self-approvals. The chosen team is `Meitou-Modding-Ecosystem/super-maintainers`; only that team's review-rule bypass implements self-merge. Keep required CI, force-push/deletion restrictions and mandatory PRs in a separate no-bypass safety ruleset. Do not grant an always bypass, bypass CI or extend the exception to release. Team membership/write access and valid effective CODEOWNERS are required; the team is not automatically a code owner merely because it has bypass permission. GitHub's bypass list cannot express “only when this actor is the PR author”; team members can bypass the beta/main review requirement for other PRs too. This trusted-team capability is deliberate and must be documented.
+
+Use versioned `scripts/branch_policy.py` reconciliation. Inspect all seven current organization repositories, preserve independent code scanning/checks, remove superseded overlapping review rules and verify actual API output. Report missing ownership/branches/CI rather than pretending a rule configuration proves end-to-end protection. Do not silently remove unknown classic protection or unreviewed custom scopes. The release gate remains unchanged at two reviews including owner.
 
 Organization-wide rulesets need GitHub Team/Enterprise. The free-tier policy reconciles current/future public repos under the verified org ID. New repos need `release`, valid CODEOWNERS and `Release readiness` CI before official publishing. Do not expose future private repository names or code in public workflow logs; private-repository execution/plan support needs separate review.
 
