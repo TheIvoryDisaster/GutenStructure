@@ -1,0 +1,22 @@
+# TWR baseline checks; does not run the real Rivalry Core integration suite.
+name: CI
+on:
+  pull_request:
+    branches: [beta, main, release]
+  push:
+    branches: [beta, main, release]
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  rules:
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/build-dotnet.yml@0ef1d783148f161894193d1aa322650b88b75bd5
+    with:
+      dotnet-version: 10.0.x
+      project: modgen/meitou/LivingWastelandMeitou.Tests/LivingWastelandMeitou.Tests.csproj
+  python:
+    uses: TheIvoryDisaster/GutenStructure/.github/workflows/build-python.yml@0ef1d783148f161894193d1aa322650b88b75bd5
+    with:
+      test-command: python -m compileall -q modgen server/tools

@@ -48,3 +48,5 @@ Agent instructions: [onboard-repository skill](.agents/skills/onboard-repository
 Secrets belong in GutenStructure's **Default environment**: `MEITOU_PROJECT_TOKEN` for project updates; `MEITOU_RELEASE_ADMIN_TOKEN` for organization repository protections. Personally owned GutenStructure protections use a separate `GUTENSTRUCTURE_ADMIN_TOKEN`. The Projects-only token cannot administer branch rules. Never put any token in a caller, source file, issue, chat or public artifact.
 
 Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconciliation path covers future **public** repositories; future private repositories need a separately reviewed private execution path and plan support. Until protections are applied and verified, production gates must remain closed.
+
+Dependency consumers: [Rivalry Core CI and promotion handoff](docs/dependency-consumer-ci.md), including the TWR baseline caller, beta bootstrap, approval requirements and deferred lock/trigger work.
