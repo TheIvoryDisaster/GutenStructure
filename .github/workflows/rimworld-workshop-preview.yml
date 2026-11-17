@@ -2,6 +2,9 @@ name: Prepare RimWorld Workshop update (no Steam login)
 on:
   workflow_call:
     inputs:
+      save-preview-artifact:
+        type: boolean
+        default: false
       release-tag:
         type: string
         required: true
@@ -27,7 +30,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 52eccad8ac3f6f233f9c0bc9fd47d921da4b001e
+          ref: 00fa7847ffa9e0d9453abceb28204ec70d0e675c
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -44,17 +47,22 @@ jobs:
           python -m scripts.rimworld_workshop --release-tag "$RELEASE_TAG" --asset-id "$ASSET_ID" \
             --sha256 "$EXPECTED_SHA256" --package-id "$PACKAGE_ID" --item-id "$ITEM_ID"
       - name: Save preview in the caller repository only
+        if: inputs.save-preview-artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: rimworld-workshop-preview
           path: workshop-preview/
           retention-days: 1
           if-no-files-found: error
-      - name: Summarize the boundary
+      - name: Record the report without consuming artifact storage
         run: |
-          {
-            echo '## RimWorld Workshop preparation passed'
-            echo 'Caller release metadata, tag ancestry, asset digest, ZIP contents, package ID and existing Workshop ID were checked.'
-            echo 'No Steam login, network requests to Steam or upload commands were run. Remote ownership and visibility were not verified.'
-            echo 'The VDF refers to this runner staging path. Regenerate it for a local path before any future approved upload.'
-          } >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PYCODE'
+          import os
+          from pathlib import Path
+          with Path(os.environ['GITHUB_STEP_SUMMARY']).open('a') as summary:
+              summary.write('## RimWorld Workshop preparation passed\n\n')
+              summary.write('No Steam login or upload ran. Remote ownership/visibility were not verified.\n\n')
+              summary.write('### Validation report\n\n```json\n' + Path('workshop-preview/plan.json').read_text() + '```\n\n')
+              summary.write('### VDF preview\n\n```text\n' + Path('workshop-preview/workshop-preview.vdf').read_text() + '```\n\n')
+              summary.write('The VDF uses an ephemeral runner path; regenerate locally before a separately approved upload. Artifact storage is off by default.\n')
+          PYCODE
