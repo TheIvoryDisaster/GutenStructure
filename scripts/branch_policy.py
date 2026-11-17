@@ -90,6 +90,9 @@ def synchronize(api, plan, apply=False):
         metadata=api(f'repos/{repo}')
         if metadata.get('owner',{}).get('id') != 357134506 or metadata.get('private'):
             raise ValueError('Unexpected repository owner/visibility')
+        # This endpoint requires repository Administration read, unlike public rule reads.
+        # Catch excluded/new repositories before any settings are written.
+        api(f'repos/{repo}/actions/permissions')
         existing=api(f'repos/{repo}/rulesets?includes_parents=false&per_page=100')
         if len(existing)>=100: raise ValueError('Incomplete ruleset inventory')
         details=[api(f'repos/{repo}/rulesets/{r["id"]}') for r in existing]
