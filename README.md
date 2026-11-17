@@ -8,6 +8,10 @@ Standard GitHub-hosted runners build public repositories. Azure is reserved for 
 
 Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository CI, pinned to a reviewed **40-character commit SHA**. See [caller examples](examples/README.md). These workflows have read-only repository permissions, no Azure authentication, no artifact publication, and no persisted checkout credentials. Repository build/test code is untrusted.
 
+## Reusable mod packaging
+
+`.github/workflows/package-meitou-mod.yml` packs one Meitou code mod and publishes it as a GitHub Release asset in the **calling** repository: a beta channel (immutable `<slug>-<version>-beta.<commit>` prereleases plus a rolling `<slug>-beta`) and a release channel (`<slug>-v<version>`, behind the caller's `release-gate.yml` job). The build runs in a read-only job; the publish job checks out nothing, runs no caller code and uses only the caller's own `GITHUB_TOKEN` with `contents: write`. It accepts no secrets, so no personal or GutenStructure credential reaches organization repositories. See [caller examples](examples/README.md).
+
 ## Infrastructure and publishing
 
 - [Build inventory](docs/build-inventory.md)
@@ -37,7 +41,7 @@ Agent instructions: [onboard-repository skill](.agents/skills/onboard-repository
 6. Add tracking issues to `backlog/project.json`; preview then apply **Synchronize Meitou project**. The Projects token is stored in the **Default environment**, not exposed to build jobs.
 7. Enable private Azure artifacts only after the separate broker policy, reader identity, quota checks and reviewed Terraform plan are ready. The current private-artifact audience is **TheIvoryDisaster**.
 
-**Approvals:** organization repositories require **two distinct approving reviewers, including at least one applicable CODEOWNER**, on both `main` and `release`. Require fresh approvals, resolved threads and passing up-to-date CI. Code-owner approval counts toward the two; authors cannot approve their own PRs. Do not lower these requirements or add a bypass.
+**Approvals (current revision):** ordinary branches are unprotected; `beta`/`main` require PRs and code-owner review, with PR-only review bypass for the selected `super-maintainers` team to self-merge. Separate CI/safety rules have no bypass. `release` requires **two distinct approving reviewers, including at least one applicable CODEOWNER**, with no bypass. Require fresh approvals, resolved threads and passing up-to-date CI. Code-owner approval counts toward the two; authors cannot approve their own PRs. Do not extend the beta/main exception to release or bypass CI. GitHub does not support formal author self-approval.
 
 **GutenStructure exception:** `main`, `beta` and `release` require PRs and passing CI with **zero required reviewers** and no mandatory code-owner review. Agents may validate and merge routine changes through conceptually grouped PRs. Changes requiring your personal testing must target `beta` and wait for your feedback before promotion to `main` or `release`. You remain the sole administrator; no co-owner is required.
 
