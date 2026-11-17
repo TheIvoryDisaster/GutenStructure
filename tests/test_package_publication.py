@@ -95,3 +95,22 @@ class PackagePublicationTests(unittest.TestCase):
                 self.call(api,path,channel='release',ref='refs/tags/framework-v0.6.0',label='0.6.0')
             gate.assert_called_once_with(api,'Meitou-Modding-Ecosystem/MeitouMods','refs/tags/framework-v0.6.0',self.sha)
             self.assertEqual(self.commands,[])
+
+
+class ProductionPositiveTests(unittest.TestCase):
+    setup_case=PackagePublicationTests.setup_case
+    call=PackagePublicationTests.call
+    @patch('scripts.publish_meitou_package.check_release')
+    def test_reviewed_production_package_can_publish(self,gate):
+        with tempfile.TemporaryDirectory() as folder:
+            api,path=self.setup_case(folder)
+            label='0.6.0'
+            filename='Framework-'+label+'.zip'
+            (path/self.filename).rename(path/filename)
+            (path/(filename+'.sha256')).write_text(self.digest+'  '+filename+'\n')
+            result=self.call(api,path,channel='release',ref='refs/tags/framework-v0.6.0',label=label)
+            self.assertEqual(result['tag'],'framework-v0.6.0')
+            self.assertFalse(result['rolling_updated'])
+            self.assertEqual(len(self.commands),1)
+            self.assertNotIn('--prerelease',self.commands[0])
+            gate.assert_called_once()
