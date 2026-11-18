@@ -18,7 +18,7 @@ Control-plane inspection succeeded. This workspace's proxy denied access to `gut
 
 ## Implementation gates
 
-1. Merge and protect the central CI foundation; enable reusable builds in MeitouMods first, then the remaining repositories using their actual dependency requirements.
+1. Merge and protect the central CI foundation; enable reusable builds in RivalryCore first, then the remaining repositories using their actual dependency requirements.
 2. Run the existing OIDC smoke check from the correct MeitouClient branch. Extend it to upload/read/hash/delete a tiny uniquely named blob and prove denial to a different project container. Keep existing federation while validating. Do not grant broader roles to make a failing check pass.
 3. Implement and verify broker claim validation, atomic quotas and adversarial rejection cases before granting general publishing access. Keep its state private. Size the service within the $20 budget.
 4. Configure exact workflow-bound trust. GitHub OIDC subject customization can include `job_workflow_ref`; Azure must match the reviewed workflow and allowed caller context. Preview flexible credentials are an alternative requiring separate compatibility review. Inspect the actual token claim shape without logging the token before migration.

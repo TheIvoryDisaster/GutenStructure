@@ -9,7 +9,7 @@
       ]
     },
     {
-      "repository": "Meitou-Modding-Ecosystem/MeitouMods",
+      "repository": "Meitou-Modding-Ecosystem/RivalryCore",
       "source": "main",
       "checks": [
         "build / build"

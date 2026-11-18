@@ -1,6 +1,6 @@
 # Cost assumptions
 
-Initial sample (2026-11-16): 67 MeitouMods CI runs over about three days; no retained Actions artifacts there. One six-platform MeitouClient package set totals about 0.38 GB. This is not an Azure billing measurement.
+Initial sample (2026-11-16): 67 RivalryCore CI runs over about three days; no retained Actions artifacts there. One six-platform MeitouClient package set totals about 0.38 GB. This is not an Azure billing measurement.
 
 At 0.4 GB per uploaded build and three-day retention, average retained GB is `builds/day * 0.4 * 3`. East US Hot LRS retail capacity was $0.0208/GB-month at inspection: two builds/day costs about $0.05/month; 25 costs $0.62; 100 costs $2.50, before transactions, downloads, lifecycle delays and other workloads.
 
