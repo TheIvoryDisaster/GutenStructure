@@ -1,0 +1,8 @@
+{
+  "id": "example.consumer",
+  "version": "0.1.0",
+  "apiVersion": 2,
+  "assemblies": ["ConsumerMod.dll"],
+  "entry": "ConsumerMod.ConsumerEntry",
+  "dependencies": [{ "id": "rivalry.core", "version": ">=0.6.0 <0.7.0" }]
+}
