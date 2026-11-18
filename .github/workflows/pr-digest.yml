@@ -7,12 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       post:
-        description: Post the digest as a discussion (otherwise only the run summary shows it)
+        description: Post the digest to Discord (otherwise only the run summary shows it)
         type: boolean
         default: false
 permissions:
   contents: read
-  discussions: write
   models: read
 concurrency:
   group: pr-digest
@@ -45,8 +44,5 @@ jobs:
         if: steps.season.outputs.run == 'true'
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          POST: ${{ github.event_name == 'schedule' || inputs.post }}
-        run: |
-          args=(--extra-repo TheIvoryDisaster/GutenStructure)
-          if [ "$POST" = true ]; then args+=(--discussion-repo "$GITHUB_REPOSITORY"); fi
-          python -m scripts.pr_digest "${args[@]}"
+          DISCORD_WEBHOOK_URL: ${{ (github.event_name == 'schedule' || inputs.post) && secrets.DISCORD_WEBHOOK_URL || '' }}
+        run: python -m scripts.pr_digest --extra-repo TheIvoryDisaster/GutenStructure

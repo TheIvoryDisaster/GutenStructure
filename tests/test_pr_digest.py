@@ -1,6 +1,6 @@
 import datetime
 import unittest
-from scripts.pr_digest import classify, render, window
+from scripts.pr_digest import chunk, classify, render, window
 
 UTC = datetime.timezone.utc
 
@@ -27,6 +27,13 @@ class PrDigestTests(unittest.TestCase):
         self.assertIn("**Opened**", text)
         self.assertNotIn("<details>", text)
         self.assertNotIn("@someone", text)
+
+    def test_chunks_fit_discord_and_break_between_lines(self):
+        text = "\n".join(["x" * 900] * 5 + ["y" * 4500])
+        pieces = chunk(text, 2000)
+        self.assertTrue(all(len(p) <= 2000 for p in pieces))
+        self.assertEqual("".join(pieces).replace("\n", ""), text.replace("\n", ""))
+        self.assertEqual(pieces[0], "\n".join(["x" * 900] * 2))
 
 
 if __name__ == "__main__":

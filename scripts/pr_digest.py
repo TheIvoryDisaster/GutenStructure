@@ -1,13 +1,15 @@
 """Daily digest of pull requests opened, updated, merged or closed across the organization's public repositories.
 
 Reads only public data with the workflow's GITHUB_TOKEN, optionally summarizes each repository with GitHub Models, and falls back
-to a plain listing when the model call fails. The digest is written to a file and can be posted as a GitHub Discussion.
+to a plain listing when the model call fails. The full digest is written to a file and the run summary; a compact one is
+posted to Discord when DISCORD_WEBHOOK_URL is set.
 """
 import argparse
 import datetime
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -193,29 +195,52 @@ def listing(pulls, collapsed):
 #endregion
 
 
-#region Posting
+#region Discord
 
-def post_discussion(repo, category, title, body, token):
-    """Creates a discussion in the named category of the repository and returns its URL."""
-    owner, name = repo.split("/")
-    query = "query($o:String!,$n:String!){repository(owner:$o,name:$n){id discussionCategories(first:50){nodes{id name}}}}"
-    found = graphql(query, {"o": owner, "n": name}, token)["repository"]
-    ids = [c["id"] for c in found["discussionCategories"]["nodes"] if c["name"] == category]
-    if not ids:
-        raise SystemExit(f"{repo} has no discussion category named '{category}'; enable Discussions or create the category")
-
-    mutation = ("mutation($r:ID!,$c:ID!,$t:String!,$b:String!){createDiscussion(input:{repositoryId:$r,categoryId:$c,"
-                "title:$t,body:$b}){discussion{url}}}")
-    created = graphql(mutation, {"r": found["id"], "c": ids[0], "t": title, "b": body}, token)
-    return created["createDiscussion"]["discussion"]["url"]
+DISCORD_LIMIT = 2000
+SUPPRESS_EMBEDS = 4
 
 
-def graphql(query, variables, token):
-    """Runs one GraphQL request and fails on any reported error."""
-    reply = request(f"{API}graphql", token, {"query": query, "variables": variables}, method="POST")
-    if reply.get("errors"):
-        raise SystemExit(f"GraphQL failed: {reply['errors']}")
-    return reply["data"]
+def discord_messages(day, repos, summaries):
+    """Splits a compact digest into Discord-sized messages: each repository's summary, or its listing when there is none."""
+    total = sum(len(pulls) for pulls in repos.values())
+    blocks = [f"# PR digest · {day:%a %d %b %Y}\n{total} pull requests in {len(repos)} repositories (New York day)."]
+    if not repos:
+        blocks.append("No pull requests were opened, updated, merged or closed.")
+
+    for repo, pulls in repos.items():
+        body = summaries.get(repo) or "\n".join(listing(pulls, collapsed=False)).strip()
+        blocks.append(f"## [{repo}](<https://github.com/{repo}>)\n{body}")
+
+    return chunk("\n\n".join(blocks), DISCORD_LIMIT)
+
+
+def chunk(text, limit):
+    """Cuts text into pieces of at most limit characters, breaking between lines where it can."""
+    pieces, current = [], ""
+    for line in text.split("\n"):
+        while len(line) > limit:
+            pieces, current = flush(pieces, current), ""
+            pieces.append(line[:limit])
+            line = line[limit:]
+        if len(current) + len(line) + 1 > limit:
+            pieces, current = flush(pieces, current), ""
+        current = f"{current}\n{line}" if current else line
+
+    return flush(pieces, current)
+
+
+def flush(pieces, current):
+    """Adds a finished piece unless it is blank."""
+    return pieces + [current] if current.strip() else pieces
+
+
+def post_discord(webhook, messages):
+    """Posts each message to the webhook in order, with link previews and every mention disabled."""
+    for message in messages:
+        body = {"content": message, "flags": SUPPRESS_EMBEDS, "allowed_mentions": {"parse": []}}
+        request(f"{webhook}?wait=true", "", body, method="POST")
+        time.sleep(1)
 
 #endregion
 
@@ -230,8 +255,6 @@ def parse_args(argv):
     parser.add_argument("--zone", default="America/New_York", help="Time zone whose previous calendar day is digested")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="GitHub Models id; empty for a plain listing")
     parser.add_argument("--output", default="digest.md")
-    parser.add_argument("--discussion-repo", help="owner/name to post the digest to as a discussion")
-    parser.add_argument("--discussion-category", default="Announcements")
     return parser.parse_args(argv)
 
 
@@ -261,9 +284,9 @@ def main(argv=None):
         with open(summary_path, "a", encoding="utf-8") as handle:
             handle.write(digest)
 
-    if args.discussion_repo:
-        title = f"PR digest · {day:%a %d %b %Y}"
-        print(post_discussion(args.discussion_repo, args.discussion_category, title, digest, token))
+    webhook = os.environ.get("DISCORD_WEBHOOK_URL")
+    if webhook:
+        post_discord(webhook, discord_messages(day, repos, summaries))
 
 
 if __name__ == "__main__":
