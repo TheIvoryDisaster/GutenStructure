@@ -1,0 +1,48 @@
+name: Daily PR digest
+on:
+  schedule:
+    # 07:07 New York time: 11:07 UTC under daylight saving time (-0400), 12:07 UTC otherwise (-0500).
+    - cron: "7 11 * * *"
+    - cron: "7 12 * * *"
+  workflow_dispatch:
+    inputs:
+      post:
+        description: Post the digest to Discord (otherwise only the run summary shows it)
+        type: boolean
+        default: false
+permissions:
+  contents: read
+  models: read
+concurrency:
+  group: pr-digest
+  cancel-in-progress: false
+jobs:
+  digest:
+    if: github.repository == 'TheIvoryDisaster/GutenStructure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Skip the schedule that is off-season for daylight saving time
+        id: season
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          offset=$(TZ=America/New_York date +%z)
+          run=true
+          if [ "$SCHEDULE" = "7 11 * * *" ] && [ "$offset" != "-0400" ]; then run=false; fi
+          if [ "$SCHEDULE" = "7 12 * * *" ] && [ "$offset" != "-0500" ]; then run=false; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: steps.season.outputs.run == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        if: steps.season.outputs.run == 'true'
+        with:
+          python-version: '3.12'
+      - name: Build and post the digest
+        if: steps.season.outputs.run == 'true'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DISCORD_WEBHOOK_URL: ${{ (github.event_name == 'schedule' || inputs.post) && secrets.DISCORD_WEBHOOK_URL || '' }}
+        run: python -m scripts.pr_digest --extra-repo TheIvoryDisaster/GutenStructure

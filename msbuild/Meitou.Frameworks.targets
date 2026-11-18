@@ -1,0 +1,80 @@
+<Project>
+
+  <!--
+    Framework lock for Meitou mod repositories (docs/framework-lock.md). Import it from the repository's Directory.Build.targets. Every project
+    with a meitou.json (a mod) and every test project then references the frameworks meitou.lock.json names: the release assets, downloaded once
+    into deps/ and checked against their SHA-256, or, for frameworks listed in MeitouFrameworkSources, the projects in local clones.
+
+    Settings (Meitou.user.props or the command line):
+      MeitouFrameworkSources  framework .csproj paths in local clones, ';'-separated; built from source instead of the locked asset
+      MeitouLockFile          default: the nearest meitou.lock.json above the project
+      MeitouFrameworksStrict  engine mismatches are errors (default: on CI)
+  -->
+
+  <PropertyGroup>
+    <MeitouLockFile Condition="'$(MeitouLockFile)' == ''">$([MSBuild]::GetPathOfFileAbove('meitou.lock.json', '$(MSBuildProjectDirectory)'))</MeitouLockFile>
+    <MeitouRepoRoot Condition="'$(MeitouLockFile)' != ''">$([System.IO.Path]::GetDirectoryName('$(MeitouLockFile)'))/</MeitouRepoRoot>
+    <MeitouDepsDir Condition="'$(MeitouDepsDir)' == '' and '$(MeitouRepoRoot)' != ''">$(MeitouRepoRoot)deps/</MeitouDepsDir>
+    <MeitouEngineDir Condition="'$(MeitouEngineDir)' == '' and '$(MeitouRepoRoot)' != ''">$(MeitouRepoRoot)engine/</MeitouEngineDir>
+    <MeitouFrameworksStrict Condition="'$(MeitouFrameworksStrict)' == '' and ('$(CI)' == 'true' or '$(GITHUB_ACTIONS)' == 'true')">true</MeitouFrameworksStrict>
+    <_MeitouSources>$(MeitouFrameworkSources.Replace('|', ';'))</_MeitouSources>
+    <_MeitouIsMod Condition="Exists('$(MSBuildProjectDirectory)/meitou.json')">true</_MeitouIsMod>
+    <_MeitouUses Condition="Exists('$(MeitouLockFile)') and ('$(_MeitouIsMod)' == 'true' or '$(IsTestProject)' == 'true')">true</_MeitouUses>
+    <!-- A mod never ships a framework (the loader refuses a mod listing another mod's assembly); tests run against it, so they copy it. -->
+    <_MeitouPrivate>false</_MeitouPrivate>
+    <_MeitouPrivate Condition="'$(_MeitouIsMod)' != 'true'">true</_MeitouPrivate>
+  </PropertyGroup>
+
+  <!--
+    Frameworks from clones are project references, known at evaluation so restore sees them. They get the same settings as globals, so a
+    framework built from source resolves its own frameworks from the same clones and the same engine (one engine in the build).
+  -->
+  <!-- Other references (the engine) drop those globals, so the consumer and the framework share one instance of each engine project. -->
+  <ItemDefinitionGroup Condition="'$(_MeitouSources)' != ''">
+    <ProjectReference>
+      <GlobalPropertiesToRemove>MeitouFrameworkSources;MeitouEngineDir</GlobalPropertiesToRemove>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Condition="'$(_MeitouUses)' == 'true' and '$(_MeitouSources)' != ''">
+    <ProjectReference Include="$(_MeitouSources)" Exclude="$(MSBuildProjectFullPath)" Private="$(_MeitouPrivate)"
+                      AdditionalProperties="MeitouFrameworkSources=$(_MeitouSources.Replace(';', '|'));MeitouEngineDir=$(MeitouEngineDir)" />
+  </ItemGroup>
+
+  <UsingTask TaskName="ResolveMeitouFrameworks" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <LockFile ParameterType="System.String" Required="true" />
+      <DepsDir ParameterType="System.String" Required="true" />
+      <EngineDir ParameterType="System.String" />
+      <Strict ParameterType="System.Boolean" />
+      <Sources ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <Manifests ParameterType="Microsoft.Build.Framework.ITaskItem[]" />
+      <Assemblies ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+      <ModFolders ParameterType="Microsoft.Build.Framework.ITaskItem[]" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)MeitouFrameworks.cs" />
+    </Task>
+  </UsingTask>
+
+  <!-- Resolves the lock: MeitouFrameworkAssembly (to reference) and MeitouFrameworkFolder (mod folders to deploy, for a Play project). -->
+  <Target Name="MeitouResolveFrameworks" Condition="Exists('$(MeitouLockFile)')">
+    <ItemGroup>
+      <_MeitouSourceItem Include="$(_MeitouSources)" />
+      <_MeitouManifest Include="$(MSBuildProjectDirectory)/meitou.json" Condition="'$(_MeitouIsMod)' == 'true'" />
+    </ItemGroup>
+    <ResolveMeitouFrameworks LockFile="$(MeitouLockFile)" DepsDir="$(MeitouDepsDir)" EngineDir="$(MeitouEngineDir)"
+                             Strict="$(MeitouFrameworksStrict)" Sources="@(_MeitouSourceItem)" Manifests="@(_MeitouManifest)">
+      <Output TaskParameter="Assemblies" ItemName="MeitouFrameworkAssembly" />
+      <Output TaskParameter="ModFolders" ItemName="MeitouFrameworkFolder" />
+    </ResolveMeitouFrameworks>
+  </Target>
+
+  <Target Name="MeitouReferenceFrameworks" BeforeTargets="ResolveAssemblyReferences" DependsOnTargets="MeitouResolveFrameworks"
+          Condition="'$(_MeitouUses)' == 'true'">
+    <ItemGroup>
+      <Reference Include="@(MeitouFrameworkAssembly)" Private="$(_MeitouPrivate)" />
+    </ItemGroup>
+  </Target>
+
+</Project>
