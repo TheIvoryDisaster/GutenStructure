@@ -9,7 +9,7 @@ The connector cannot administer rulesets. Apply the reviewed JSON in `docs/owner
 Keep Default environment secrets restricted to reviewed main/release branches before granting anyone collaborator write access. Do not expose them to pull-request code or arbitrary feature branches. Use read-only default workflow tokens, disable Actions-created approvals, and retain secret scanning/push protection where available. CODEOWNERS remains ownership documentation; it does not impose a review requirement in this personal exception.
 
 
-Organization policy revision 2 supersedes older main review counts: ordinary branches unprotected; beta/main use owner review with the selected super-maintainers team's PR-only review bypass; release retains two reviews including owner and no bypass. CI/safety remains separate with no bypass. See docs/releases.md. The personal GutenStructure exception remains unchanged.
+Organization policy revision 2 supersedes older main review counts: ordinary branches unprotected; beta/main use owner review with the selected super-maintainers team's PR-only review bypass (on beta also GitHub Actions, for framework-update.yml); release retains two reviews including owner and no bypass. CI/safety remains separate with no bypass. See docs/releases.md. The personal GutenStructure exception remains unchanged.
 
 
 ## Verified personal protection setup

@@ -5,7 +5,9 @@ from scripts.apply_release_policy import GitHubFailure, discover_repositories, o
 
 ORG = 'Meitou-Modding-Ecosystem'
 TEAM = 'super-maintainers'
-MANAGED = {'Stable branch protection', 'Release promotion', 'Meitou branch safety', 'Meitou owner review'}
+MANAGED = {'Stable branch protection', 'Release promotion', 'Meitou branch safety', 'Meitou owner review', 'Meitou beta owner review'}
+# GitHub Actions: on beta only, workflows (framework-update.yml) may merge their own green PRs; CI/safety still applies to them.
+ACTIONS_APP = 15368
 
 
 def review(count, owner, last_push=False):
@@ -27,10 +29,13 @@ def policies(checks, team_id):
     return [
         ruleset('Meitou branch safety',['beta','main'],[
             {'type':'deletion'},{'type':'non_fast_forward'},review(0,False),copy.deepcopy(status)]),
-        ruleset('Meitou owner review',['beta','main'],[review(1,True)],
+        ruleset('Meitou owner review',['main'],[review(1,True)],
             [{'actor_type':'Team','actor_id':team_id,'bypass_mode':'pull_request'}]),
         ruleset('Stable branch protection',['release'],[
-            {'type':'deletion'},{'type':'non_fast_forward'},review(2,True,True),copy.deepcopy(status)])]
+            {'type':'deletion'},{'type':'non_fast_forward'},review(2,True,True),copy.deepcopy(status)]),
+        ruleset('Meitou beta owner review',['beta'],[review(1,True)],
+            [{'actor_type':'Team','actor_id':team_id,'bypass_mode':'pull_request'},
+             {'actor_type':'Integration','actor_id':ACTIONS_APP,'bypass_mode':'pull_request'}])]
 
 
 def organization_templates(team_id):
@@ -155,7 +160,7 @@ def synchronize(api, plan, apply=False):
                 if len(found)>1: raise ValueError('Duplicate managed organization rulesets')
                 path=f'orgs/{ORG}/rulesets'+('/'+str(found[0]['id']) if found else '')
                 api(path,method='PUT' if found else 'POST',body=template)
-            organization_status='Applied three organization-wide rulesets to all current/future repositories; repository CI rules remain separately enforced.'
+            organization_status='Applied four organization-wide rulesets to all current/future repositories; repository CI rules remain separately enforced.'
         except GitHubFailure as error:
             if error.status not in (403,404,422): raise
             organization_status=f'Organization API returned HTTP {error.status}; do not infer plan support. Per-repository policy remains the fallback; inspect any partially created organization rules.'
