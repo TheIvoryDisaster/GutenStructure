@@ -5,7 +5,7 @@ Initial inspection: 2026-11-16. Recheck manifests before enabling each caller.
 | Repository | Branch | Build/check | Additional requirements |
 | --- | --- | --- | --- |
 | MeitouClient | fork (master mirrors upstream) | .NET 11 build; tests excluding Slow/Bench for PRs | Release matrix: Windows, Linux, macOS; native dependencies; legacy macOS uses .NET 10 |
-| MeitouMods | beta, main | .NET 11 build/test | Recursive pinned engine submodule; existing CI is the pilot for reusable .NET CI; Rivalry Core beta prereleases are the pilot for `package-meitou-mod.yml` |
+| RivalryCore | beta, main | .NET 11 build/test | Recursive pinned engine submodule; existing CI is the pilot for reusable .NET CI; Rivalry Core beta prereleases are the pilot for `package-meitou-mod.yml` |
 | PZAKenshiMotionLab | master | Python pipeline/no-Pillow/fuzz checks | numpy/Pillow; Blender headless check is separate |
 | TheWastelandRemembers | main | Engine-free C# rules tests; inspect Python checks | Release generation needs privately supplied Kenshi data and engine binaries |
 | PZAMeitouUi | master | Validate through consuming probe | Source library; no standalone project in root |
