@@ -10,14 +10,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check out UI source
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Meitou-Modding-Ecosystem/PZAMeitouUi
           ref: ${{ github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUi' && github.sha || '54f670ba5b21fe7deff77b48abc2c66682fb6553' }}
           path: PZAMeitouUi
           persist-credentials: false
       - name: Check out probe
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: Meitou-Modding-Ecosystem/PZAMeitouUiProbe
           ref: ${{ github.repository == 'Meitou-Modding-Ecosystem/PZAMeitouUiProbe' && github.sha || 'ba87396ffb80398689c58e25fd41d78e7ce2d014' }}
