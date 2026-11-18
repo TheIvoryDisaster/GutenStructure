@@ -1,0 +1,4 @@
+<Project>
+  <!-- The one line a consumer adds; in a real repository GutenStructure is the submodule build/gutenstructure, pinned to a release commit. -->
+  <Import Project="build/gutenstructure/msbuild/Meitou.Frameworks.targets" />
+</Project>

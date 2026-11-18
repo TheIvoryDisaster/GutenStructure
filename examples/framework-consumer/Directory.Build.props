@@ -1,0 +1,4 @@
+<Project>
+  <!-- A consumer repository's own props: the engine's build settings. The smoke workflow places the engine at engine/. -->
+  <Import Project="engine/Directory.Build.props" />
+</Project>
