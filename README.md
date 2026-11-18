@@ -23,6 +23,7 @@ Mod repositories consume framework releases through `meitou.lock.json` and `msbu
 - [Project synchronization](docs/project-sync.md)
 - [Publishing boundary and rollout](docs/publishing.md)
 - [Cost assumptions](docs/costs.md)
+- [Daily PR digest](docs/pr-digest.md)
 - [Terraform module](terraform/README.md)
 
 Publishing is intentionally unavailable until centrally enforced identity and quota checks exist. The Terraform module creates storage containers and retention rules on a **dedicated** storage account; it does not grant workload access or adopt the existing shared account.
