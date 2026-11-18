@@ -1,0 +1,14 @@
+{
+  "format": 1,
+  "frameworks": [
+    {
+      "id": "rivalry.core",
+      "repo": "Meitou-Modding-Ecosystem/MeitouMods",
+      "tag": "rivalry-core-v0.6.0",
+      "asset": "RivalryCore-0.6.0.zip",
+      "sha256": "f2e90568678b6a8803d78ac3f254c172e024a2ebecbbc15ae1c157aaa4ebabd4",
+      "folder": "RivalryCore",
+      "engine": "1cc76a0bed94d55408e0521d10cf8c8c20c57417"
+    }
+  ]
+}
