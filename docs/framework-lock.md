@@ -23,7 +23,7 @@ builds and tests [a sample mod](../examples/framework-consumer) against `rivalry
      "frameworks": [
        {
          "id": "rivalry.core",
-         "repo": "Meitou-Modding-Ecosystem/MeitouMods",
+         "repo": "Meitou-Modding-Ecosystem/RivalryCore",
          "tag": "rivalry-core-v0.6.0",
          "asset": "RivalryCore-0.6.0.zip",
          "sha256": "f2e90568678b6a8803d78ac3f254c172e024a2ebecbbc15ae1c157aaa4ebabd4",
@@ -54,8 +54,8 @@ In the consumer's git-ignored `Meitou.user.props`, imported by its `Directory.Bu
 ```xml
 <Project>
   <PropertyGroup>
-    <MeitouFrameworkSources>C:\src\MeitouMods\RivalryCore\RivalryCore.csproj</MeitouFrameworkSources>
-    <MeitouEngineDir>C:\src\MeitouMods\engine\</MeitouEngineDir>
+    <MeitouFrameworkSources>C:\src\RivalryCore\RivalryCore\RivalryCore.csproj</MeitouFrameworkSources>
+    <MeitouEngineDir>C:\src\RivalryCore\engine\</MeitouEngineDir>
   </PropertyGroup>
 </Project>
 ```

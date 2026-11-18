@@ -28,7 +28,7 @@ jobs:
           organization = get('orgs/Meitou-Modding-Ecosystem')
           if organization['id'] != 357134506:
               raise SystemExit('Organization identity mismatch')
-          names = ['MeitouClient', 'MeitouMods', 'PZAKenshiMotionLab',
+          names = ['MeitouClient', 'RivalryCore', 'PZAKenshiMotionLab',
                    'TheWastelandRemembers', 'PZAMeitouUi', 'PZAMeitouUiProbe']
           failures = 0
           for name in names:

@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 ALLOWED = {"TheIvoryDisaster/GutenStructure", *("Meitou-Modding-Ecosystem/" + name for name in (
-    "MeitouClient", "MeitouMods", "KenshiOracle", "PZAKenshiMotionLab", "TheWastelandRemembers", "PZAMeitouUi", "PZAMeitouUiProbe"))}
+    "MeitouClient", "RivalryCore", "KenshiOracle", "PZAKenshiMotionLab", "TheWastelandRemembers", "PZAMeitouUi", "PZAMeitouUiProbe"))}
 
 
 class MissingResource(RuntimeError):
