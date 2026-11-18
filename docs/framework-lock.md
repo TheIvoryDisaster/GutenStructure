@@ -71,4 +71,4 @@ In the consumer's git-ignored `Meitou.user.props`, imported by its `Directory.Bu
 
 A PR edits `meitou.lock.json` (and the engine submodule when the lock's engine changes). Pin immutable tags only: `<slug>-v<version>` or
 `<slug>-<version>-beta.<commit>`, never the rolling `<slug>-beta`. In a chain, a layer moves its lock only after the layer it depends on has
-published the release it locks.
+published the release it locks. [framework-update.yml](framework-update.md) opens and merges these PRs on its own once a release is out.
