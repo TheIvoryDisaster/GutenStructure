@@ -42,7 +42,8 @@ jobs:
 4. Moves `engine` to that commit, builds and tests `test-project` with the strict engine check.
 5. Commits the lock, the widened manifests and the engine pointer to `framework-update/<channel>`, opens or updates one PR into `base`,
    dispatches CI on it and waits.
-6. Merges it (`merge`, default on) when both the run's tests and CI pass. Where the base branch's rules need a maintainer's review, the PR
-   stays open, green, for a maintainer to merge. A failing PR stays open and the run fails.
+6. Merges it (`merge`, default on) when both the run's tests and CI pass. Org repositories allow this on `beta` only: GitHub Actions has
+   PR-only review bypass there ([releases](releases.md)). Where a base branch's rules still need a review, the PR stays open, green, for a
+   maintainer to merge. A failing PR stays open and the run fails.
 
 A run that finds nothing newer, or the same releases an open PR already holds, changes nothing.

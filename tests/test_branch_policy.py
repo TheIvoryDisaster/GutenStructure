@@ -12,10 +12,14 @@ class BranchTierTests(unittest.TestCase):
         self.assertIs(scope['GitHubFailure'],GitHubFailure)
 
     def test_only_main_beta_allow_selected_team_review_bypass(self):
-        safety,owner,release=policies(['build'],123)
+        safety,owner,release,beta=policies(['build'],123)
         self.assertEqual(safety['bypass_actors'],[])
         self.assertEqual(owner['bypass_actors'],[{'actor_type':'Team','actor_id':123,'bypass_mode':'pull_request'}])
-        self.assertEqual(owner['conditions']['ref_name']['include'],['refs/heads/beta','refs/heads/main'])
+        self.assertEqual(owner['conditions']['ref_name']['include'],['refs/heads/main'])
+        self.assertEqual(beta['conditions']['ref_name']['include'],['refs/heads/beta'])
+        self.assertEqual(beta['bypass_actors'],[{'actor_type':'Team','actor_id':123,'bypass_mode':'pull_request'},
+                                                {'actor_type':'Integration','actor_id':15368,'bypass_mode':'pull_request'}])
+        self.assertEqual(safety['conditions']['ref_name']['include'],['refs/heads/beta','refs/heads/main'])
         self.assertEqual(release['conditions']['ref_name']['include'],['refs/heads/release'])
         self.assertEqual(release['bypass_actors'],[])
         params=next(r for r in release['rules'] if r['type']=='pull_request')['parameters']
@@ -23,7 +27,7 @@ class BranchTierTests(unittest.TestCase):
         self.assertTrue(params['require_code_owner_review'])
         self.assertTrue(any(r['type']=='required_status_checks' for r in safety['rules']))
         self.assertFalse(any(r['type']=='required_status_checks' for r in owner['rules']))
-        self.assertFalse(any('refs/heads/fork' in p['conditions']['ref_name']['include'] for p in (safety,owner,release)))
+        self.assertFalse(any('refs/heads/fork' in p['conditions']['ref_name']['include'] for p in (safety,owner,release,beta)))
 
     def test_org_templates_cover_new_repos_and_never_release_bypass(self):
         templates=organization_templates(123)
@@ -68,15 +72,15 @@ class BranchTierTests(unittest.TestCase):
             raise AssertionError(path)
         return api,writes
 
-    def test_preview_is_readonly_and_apply_uses_three_separate_rules(self):
+    def test_preview_is_readonly_and_apply_uses_four_separate_rules(self):
         plan={'branch':'release','repositories':[],'policy_version':2,'codeowner_self_merge_team':'super-maintainers'}
         api,writes=self.fake()
         result=synchronize(api,plan)
         self.assertEqual(writes,[])
         self.assertEqual(result['team']['id'],123)
         synchronize(api,plan,apply=True)
-        self.assertEqual(len(writes),3)
-        self.assertEqual(writes[-1][2]['bypass_actors'],[])
+        self.assertEqual(len(writes),4)
+        self.assertEqual(writes[2][2]['bypass_actors'],[])
 
     def test_unreadable_team_blocks_all_mutations(self):
         api,writes=self.fake(team_access=False)
