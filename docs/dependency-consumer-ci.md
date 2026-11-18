@@ -14,7 +14,7 @@ Keep the real dependency tests and `release_check.sh` instructions from TWR #7. 
 
 ## Adopt the released shared packager
 
-GutenStructure #24 promoted the packaging workflow and guard fixes to release at `0ef1d783148f161894193d1aa322650b88b75bd5`. The MeitouMods agent can replace its local reusable-workflow references in both beta and production callers with:
+GutenStructure #24 promoted the packaging workflow and guard fixes to release at `0ef1d783148f161894193d1aa322650b88b75bd5`. The RivalryCore agent can replace its local reusable-workflow references in both beta and production callers with:
 
 ```yaml
 uses: TheIvoryDisaster/GutenStructure/.github/workflows/package-meitou-mod.yml@0ef1d783148f161894193d1aa322650b88b75bd5
@@ -24,10 +24,10 @@ Keep existing inputs, caller-job `contents: write`, and the production job's exp
 
 ## Production and approvals
 
-MeitouMods #68 is the separate production promotion. It requires two distinct reviewers, including an applicable code owner; author self-approval and the beta/main review bypass do not satisfy release policy. After merge, verify the manifest is 0.6.0 and create `rivalry-core-v0.6.0` at the current reviewed release head. Do not tag beta or the unmerged PR head. Verify the production workflow, artifact digest and release notes before consumers switch from their beta snapshot.
+RivalryCore #68 is the separate production promotion. It requires two distinct reviewers, including an applicable code owner; author self-approval and the beta/main review bypass do not satisfy release policy. After merge, verify the manifest is 0.6.0 and create `rivalry-core-v0.6.0` at the current reviewed release head. Do not tag beta or the unmerged PR head. Verify the production workflow, artifact digest and release notes before consumers switch from their beta snapshot.
 
 GutenStructure is the personal exception: PRs and passing CI, zero required reviewers. Changes needing owner testing go through beta and await feedback before promotion. Organization beta/main use code-owner review with the documented super-maintainers review-rule exception; mandatory CI remains enforced. See [release policy](releases.md).
 
 ## Deliberately deferred
 
-MeitouMods #62 still owns the dependency lock format and automatic downstream test triggering. Keep immutable tags and explicitly recorded hashes; never use the rolling `rivalry-core-beta` alias as a CI pin or auto-update a dependency pin. Do not introduce an ad hoc lock schema or cross-repository publishing credentials to unblock baseline CI. For now, run the consumer's explicit integration checks and record evidence manually.
+RivalryCore #62 still owns the dependency lock format and automatic downstream test triggering. Keep immutable tags and explicitly recorded hashes; never use the rolling `rivalry-core-beta` alias as a CI pin or auto-update a dependency pin. Do not introduce an ad hoc lock schema or cross-repository publishing credentials to unblock baseline CI. For now, run the consumer's explicit integration checks and record evidence manually.

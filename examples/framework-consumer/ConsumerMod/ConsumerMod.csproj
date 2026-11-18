@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
-  <!-- A mod that compiles against Rivalry Core from the locked release asset only: no MeitouMods source anywhere in this repository. -->
+  <!-- A mod that compiles against Rivalry Core from the locked release asset only: no RivalryCore source anywhere in this repository. -->
   <PropertyGroup>
     <AssemblyName>ConsumerMod</AssemblyName>
     <RootNamespace>ConsumerMod</RootNamespace>
