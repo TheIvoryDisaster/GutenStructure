@@ -49,3 +49,11 @@ class OwnerServiceTests(unittest.TestCase):
         api,writes = self.api()
         self.assertFalse(evaluate_pr(api,'Meitou-Modding-Ecosystem/RivalryCore',1))
         self.assertNotIn('sensitive', json.dumps(writes))
+
+class HistoryOnlyTests(unittest.TestCase):
+    def test_empty_beta_diff_needs_no_path_review(self):
+        from scripts.owner_approval import evaluate
+        self.assertTrue(evaluate('alice','head','beta',[],'* @alice',[],{'@alice':{'alice'}})[0])
+    def test_empty_release_diff_still_needs_independent_review(self):
+        from scripts.owner_approval import evaluate
+        self.assertFalse(evaluate('alice','head','release',[],'* @alice',[],{'@alice':{'alice'}})[0])

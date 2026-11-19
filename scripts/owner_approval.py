@@ -49,8 +49,8 @@ def parse_owners(text):
 
 def evaluate(author, head, branch, files, ownership, reviews, members):
     """members maps validated owner tokens to eligible users with repository write access."""
-    if branch not in ('beta', 'main', 'release') or not files:
-        raise ValueError('Expected a protected branch and nonempty complete file inventory')
+    if branch not in ('beta', 'main', 'release') or not isinstance(files, list):
+        raise ValueError('Expected a protected branch and complete file inventory')
     author = author.lower()
     latest = {}
     for review in sorted(reviews, key=lambda r: r['id']):
