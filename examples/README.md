@@ -2,7 +2,7 @@
 
 Replace `REVIEWED_COMMIT_SHA` with the approved 40-character GutenStructure commit SHA after merge. These are templates, not active callers.
 
-MeitouMods (`.github/workflows/ci.yml`, preserve the required check name during migration):
+RivalryCore (`.github/workflows/ci.yml`, preserve the required check name during migration):
 
 ```yaml
 name: CI
@@ -21,7 +21,7 @@ jobs:
     uses: TheIvoryDisaster/GutenStructure/.github/workflows/build-dotnet.yml@REVIEWED_COMMIT_SHA
 ```
 
-MeitouMods framework prereleases (`.github/workflows/rivalry-core-beta.yml`), on pushes to `beta`:
+RivalryCore framework prereleases (`.github/workflows/rivalry-core-beta.yml`), on pushes to `beta`:
 
 ```yaml
 name: Rivalry Core beta

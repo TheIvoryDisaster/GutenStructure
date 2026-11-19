@@ -40,7 +40,7 @@ class PackagePublicationTests(unittest.TestCase):
         return api,path
 
     def call(self,api,path,**kwargs):
-        return publish(api,self.commands.append,'Meitou-Modding-Ecosystem/MeitouMods',self.sha,
+        return publish(api,self.commands.append,'Meitou-Modding-Ecosystem/RivalryCore',self.sha,
             kwargs.get('ref','refs/heads/beta'),'Framework','framework',kwargs.get('channel','beta'),
             kwargs.get('label',self.label),self.digest,path)
 
@@ -97,7 +97,7 @@ class PackagePublicationTests(unittest.TestCase):
             api,path=self.setup_case(folder)
             with self.assertRaisesRegex(RuntimeError,'not protected'):
                 self.call(api,path,channel='release',ref='refs/tags/framework-v0.6.0',label='0.6.0')
-            gate.assert_called_once_with(api,'Meitou-Modding-Ecosystem/MeitouMods','refs/tags/framework-v0.6.0',self.sha)
+            gate.assert_called_once_with(api,'Meitou-Modding-Ecosystem/RivalryCore','refs/tags/framework-v0.6.0',self.sha)
             self.assertEqual(self.commands,[])
 
 

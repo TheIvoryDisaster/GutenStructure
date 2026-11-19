@@ -19,7 +19,7 @@ Use this skill when adding or repairing CI/release setup for an existing or new 
 
 Inventory source/default/development branches, SDK/runtime pins, engine references/submodules, build/test/package commands, licenses, game-data requirements and existing checks. Update `docs/build-inventory.md` and `backlog/releases.json`. Do not claim full integration coverage when only compilation or engine-free rules were checked.
 
-MeitouClient `master` is an upstream mirror; development uses `fork`. MeitouMods develops on `beta`, with existing stable work on `main`. Other repositories keep their development branches. Never rewrite an upstream mirror for organization-only CI.
+MeitouClient `master` is an upstream mirror; development uses `fork`. RivalryCore develops on `beta`, with existing stable work on `main`. Other repositories keep their development branches. Never rewrite an upstream mirror for organization-only CI.
 
 ## 2. Prepare unprivileged CI
 
@@ -27,7 +27,7 @@ Use `.github/workflows/build-dotnet.yml`, `build-python.yml`, or the UI compatib
 
 Run CI on development PRs/pushes and on PRs/pushes targeting `release`. Define a final `Release readiness` job that succeeds only when every required build/test/package prerequisite succeeded; skipped, cancelled or failed dependencies must not count as success. Keep the existing required check names until the ruleset migration is complete. Pin third-party actions by commit SHA, use read-only tokens and disable persisted checkout credentials. Cancel superseded PR builds.
 
-For framework consumers, follow [dependency consumer CI](../../../docs/dependency-consumer-ci.md). Ensure the workflow is present in the beta PR merge tree, not just the default branch, and preserve required check names. Distinguish engine-free baseline checks from real-framework present/absent integration tests. Use immutable artifact tags and pinned digests; lock format and automatic downstream triggering remain separate design work in MeitouMods #62.
+For framework consumers, follow [dependency consumer CI](../../../docs/dependency-consumer-ci.md). Ensure the workflow is present in the beta PR merge tree, not just the default branch, and preserve required check names. Distinguish engine-free baseline checks from real-framework present/absent integration tests. Use immutable artifact tags and pinned digests; lock format and automatic downstream triggering remain separate design work in RivalryCore #62.
 
 ## 3. Bootstrap release and ownership
 
