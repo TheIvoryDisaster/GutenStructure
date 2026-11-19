@@ -6,6 +6,7 @@ class InterimTests(unittest.TestCase):
         self.assertEqual(p['required_approving_review_count'],1)
         self.assertFalse(p['require_code_owner_review'])
         self.assertFalse(p['require_last_push_approval'])
+        self.assertFalse(p['require_extra_approval_for_unattributed_changes'])
         self.assertEqual(p['required_reviewers'][0]['reviewer']['id'],20738063)
     def test_ignored_team_field_is_rejected(self):
         rule=review();del rule['parameters']['required_reviewers']

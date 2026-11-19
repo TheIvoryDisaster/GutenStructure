@@ -13,7 +13,7 @@ def review(team_id=TEAM_ID):
     return {'type':'pull_request', 'parameters':{
         'required_approving_review_count':1, 'require_code_owner_review':False,
         'dismiss_stale_reviews_on_push':True, 'require_last_push_approval':False,
-        'required_review_thread_resolution':False,
+        'required_review_thread_resolution':False, 'require_extra_approval_for_unattributed_changes':False,
         'required_reviewers':[{'file_patterns':['**'], 'minimum_approvals':1,
                                'reviewer':{'id':team_id,'type':'Team'}}]}}
 
