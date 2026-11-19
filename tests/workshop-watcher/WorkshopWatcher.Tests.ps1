@@ -180,6 +180,16 @@ Describe 'package staging' {
     }
 }
 
+Describe 'upload state' {
+    It 'reads and writes items on an empty state, as on a first run' {
+        $state = [pscustomobject]@{}
+        Get-ItemState -State $state -Key 'owner/repo#1' | Should -BeNullOrEmpty
+        Set-ItemState -State $state -Key 'owner/repo#1' -Value 'v1'
+        Set-ItemState -State $state -Key 'owner/repo#1' -Value 'v2'
+        Get-ItemState -State $state -Key 'owner/repo#1' | Should -Be 'v2'
+    }
+}
+
 Describe 'steamcmd results' {
     It 'reads <case> as <result>' -ForEach @(
         @{ case = 'success'; exit = 0; output = "Logging in using cached credentials.`nUploading content...`nSuccess."; result = 'success' }
