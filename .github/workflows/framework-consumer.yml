@@ -1,0 +1,66 @@
+# Gate for splitting mods into their own repositories (docs/framework-lock.md): a repository holding no framework source builds and tests a mod
+# against a published framework release through msbuild/Meitou.Frameworks.targets alone, and the lock refuses a wrong hash or engine.
+name: Framework consumer smoke
+on:
+  pull_request:
+    paths: [msbuild/**, examples/framework-consumer/**, .github/workflows/framework-consumer.yml]
+  push:
+    branches: [main, beta, release]
+    paths: [msbuild/**, examples/framework-consumer/**, .github/workflows/framework-consumer.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: framework-consumer-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  consumer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CONSUMER: ${{ github.workspace }}/../consumer
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 11.0.x
+      - name: Lay out a consumer repository outside this checkout
+        run: |
+          cp -r examples/framework-consumer "$CONSUMER"
+          mkdir -p "$CONSUMER/build/gutenstructure"
+          cp -r msbuild "$CONSUMER/build/gutenstructure/msbuild"
+          engine=$(jq -r '.frameworks[0].engine' "$CONSUMER/meitou.lock.json")
+          git clone --quiet --filter=blob:none https://github.com/Meitou-Modding-Ecosystem/MeitouClient.git "$CONSUMER/engine"
+          git -C "$CONSUMER/engine" checkout --quiet --detach "$engine"
+      - name: Build and test against the locked release
+        working-directory: ${{ env.CONSUMER }}
+        run: |
+          dotnet test FrameworkConsumer.slnx --configuration Release
+          test -f deps/rivalry-core-v0.6.0/RivalryCore/RivalryCore.dll
+      - name: A wrong SHA-256 fails the build
+        working-directory: ${{ env.CONSUMER }}
+        run: |
+          rm -rf deps
+          cp meitou.lock.json lock.good
+          jq '.frameworks[0].sha256 = "0000000000000000000000000000000000000000000000000000000000000000"' lock.good > meitou.lock.json
+          if dotnet build ConsumerMod/ConsumerMod.csproj --configuration Release > bad-hash.log 2>&1; then cat bad-hash.log; echo "built with a wrong hash"; exit 1; fi
+          grep -q "has SHA-256" bad-hash.log || { cat bad-hash.log; exit 1; }
+          test ! -d deps/rivalry-core-v0.6.0
+          cp lock.good meitou.lock.json
+      - name: An engine other than the lock's fails the build on CI
+        working-directory: ${{ env.CONSUMER }}
+        run: |
+          jq '.frameworks[0].engine = "0000000000000000000000000000000000000000"' lock.good > meitou.lock.json
+          if dotnet build ConsumerMod/ConsumerMod.csproj --configuration Release > bad-engine.log 2>&1; then cat bad-engine.log; echo "built on the wrong engine"; exit 1; fi
+          grep -q "move the engine submodule" bad-engine.log || { cat bad-engine.log; exit 1; }
+          cp lock.good meitou.lock.json
+      - name: A range the lock doesn't satisfy fails the build
+        working-directory: ${{ env.CONSUMER }}
+        run: |
+          cp ConsumerMod/meitou.json manifest.good
+          jq '.dependencies[0].version = ">=0.7.0 <0.8.0"' manifest.good > ConsumerMod/meitou.json
+          if dotnet build ConsumerMod/ConsumerMod.csproj --configuration Release > bad-range.log 2>&1; then cat bad-range.log; echo "built outside the range"; exit 1; fi
+          grep -q "Move rivalry.core in the lock" bad-range.log || { cat bad-range.log; exit 1; }
+          cp manifest.good ConsumerMod/meitou.json

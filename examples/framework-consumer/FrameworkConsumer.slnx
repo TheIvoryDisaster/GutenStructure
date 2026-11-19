@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ConsumerMod/ConsumerMod.csproj" />
+  <Project Path="ConsumerMod.Tests/ConsumerMod.Tests.csproj" />
+</Solution>

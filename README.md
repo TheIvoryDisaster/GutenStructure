@@ -12,6 +12,10 @@ Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository 
 
 `.github/workflows/package-meitou-mod.yml` packs one Meitou code mod and publishes it as a GitHub Release asset in the **calling** repository: a beta channel (immutable `<slug>-<version>-beta.<commit>` prereleases plus a rolling `<slug>-beta`) and a release channel (`<slug>-v<version>`, behind the caller's `release-gate.yml` job). The build runs in a read-only job; the publish job checks out nothing, runs no caller code and uses only the caller's own `GITHUB_TOKEN` with `contents: write`. It accepts no secrets, so no personal or GutenStructure credential reaches organization repositories. See [caller examples](examples/README.md).
 
+## Framework lock
+
+Mod repositories consume framework releases through `meitou.lock.json` and `msbuild/Meitou.Frameworks.targets`: hash-checked downloads, engine and range checks, and a local-clone override. See [framework lock](docs/framework-lock.md). [Framework update](docs/framework-update.md) moves a lock to new framework releases and merges it when the mod's CI passes.
+
 ## Infrastructure and publishing
 
 - [Build inventory](docs/build-inventory.md)
@@ -19,6 +23,8 @@ Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository 
 - [Project synchronization](docs/project-sync.md)
 - [Publishing boundary and rollout](docs/publishing.md)
 - [Cost assumptions](docs/costs.md)
+- [Daily PR digest](docs/pr-digest.md)
+- [Workshop Watcher](docs/workshop-watcher.md): authors' own PCs upload new GitHub releases to the Steam Workshop
 - [Terraform module](terraform/README.md)
 
 Publishing is intentionally unavailable until centrally enforced identity and quota checks exist. The Terraform module creates storage containers and retention rules on a **dedicated** storage account; it does not grant workload access or adopt the existing shared account.
@@ -41,7 +47,7 @@ Agent instructions: [onboard-repository skill](.agents/skills/onboard-repository
 6. Add tracking issues to `backlog/project.json`; preview then apply **Synchronize Meitou project**. The Projects token is stored in the **Default environment**, not exposed to build jobs.
 7. Enable private Azure artifacts only after the separate broker policy, reader identity, quota checks and reviewed Terraform plan are ready. The current private-artifact audience is **TheIvoryDisaster**.
 
-**Approvals (current revision):** ordinary branches are unprotected; `beta`/`main` require PRs and code-owner review, with PR-only review bypass for the selected `super-maintainers` team to self-merge. Separate CI/safety rules have no bypass. `release` requires **two distinct approving reviewers, including at least one applicable CODEOWNER**, with no bypass. Require fresh approvals, resolved threads and passing up-to-date CI. Code-owner approval counts toward the two; authors cannot approve their own PRs. Do not extend the beta/main exception to release or bypass CI. GitHub does not support formal author self-approval.
+**Approvals (current revision):** ordinary branches are unprotected; `beta`/`main` require PRs and code-owner review, with PR-only review bypass for the selected `super-maintainers` team to self-merge, and on `beta` only for GitHub Actions so [framework update](docs/framework-update.md) can merge its green lock PRs. Separate CI/safety rules have no bypass. `release` requires **two distinct approving reviewers, including at least one applicable CODEOWNER**, with no bypass. Require fresh approvals, resolved threads and passing up-to-date CI. Code-owner approval counts toward the two; authors cannot approve their own PRs. Do not extend the beta/main exception to release or bypass CI. GitHub does not support formal author self-approval.
 
 **GutenStructure exception:** `main`, `beta` and `release` require PRs and passing CI with **zero required reviewers** and no mandatory code-owner review. Agents may validate and merge routine changes through conceptually grouped PRs. Changes requiring your personal testing must target `beta` and wait for your feedback before promotion to `main` or `release`. You remain the sole administrator; no co-owner is required.
 
@@ -50,3 +56,5 @@ Secrets belong in GutenStructure's **Default environment**: `MEITOU_PROJECT_TOKE
 Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconciliation path covers future **public** repositories; future private repositories need a separately reviewed private execution path and plan support. Until protections are applied and verified, production gates must remain closed.
 
 Dependency consumers: [Rivalry Core CI and promotion handoff](docs/dependency-consumer-ci.md), including the TWR baseline caller, beta bootstrap, approval requirements and deferred lock/trigger work.
+
+**Temporary approval policy:** [revision 3](docs/interim-review-policy.md) replaces the older review counts for public org repos except Husbandry with one native super-maintainers approval. Preserve CI/security; Husbandry remains isolated for custom-check testing. Deployment and caller-pin upgrade evidence must be checked before claiming the rollout is complete.

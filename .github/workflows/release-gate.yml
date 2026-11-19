@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 60f35c0b3307016a57fb4a9fa5ef9c1594ce4144
+          ref: ddbbda9ceee9a56f35d0351cd1714ad8ab8008ad
           persist-credentials: false
       - name: Verify release branch and enforced review requirements
         env:

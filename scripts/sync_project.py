@@ -12,7 +12,7 @@ PROJECT_NUMBER = 1
 ALLOWED_REPOSITORIES = {
     "TheIvoryDisaster/GutenStructure",
     *(f"{PROJECT_OWNER}/{name}" for name in (
-        "MeitouClient", "MeitouMods", "PZAKenshiMotionLab",
+        "MeitouClient", "RivalryCore", "PZAKenshiMotionLab",
         "TheWastelandRemembers", "PZAMeitouUi", "PZAMeitouUiProbe")),
 }
 URL = re.compile(r"https://github\.com/([^/]+/[^/]+)/issues/([1-9][0-9]*)\Z")

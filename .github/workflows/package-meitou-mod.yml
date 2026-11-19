@@ -76,7 +76,7 @@ jobs:
           fi
           [[ -z "$TEST_PROJECT" || "$TEST_PROJECT" =~ ^[A-Za-z0-9_./]+$ && "$TEST_PROJECT" != -* ]] || { echo "bad test-project" >&2; exit 1; }
 
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
           persist-credentials: false
@@ -208,13 +208,13 @@ jobs:
           echo "$SHA256  $zip" | sha256sum -c -
 
       - name: Check out only the reviewed publisher implementation
-        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 60f35c0b3307016a57fb4a9fa5ef9c1594ce4144
+          ref: ddbbda9ceee9a56f35d0351cd1714ad8ab8008ad
           path: _publisher
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
       - name: Verify eligibility and publish without executing caller source

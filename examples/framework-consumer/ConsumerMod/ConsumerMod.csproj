@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- A mod that compiles against Rivalry Core from the locked release asset only: no RivalryCore source anywhere in this repository. -->
+  <PropertyGroup>
+    <AssemblyName>ConsumerMod</AssemblyName>
+    <RootNamespace>ConsumerMod</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../engine/src/Meitou.Core/Meitou.Core.csproj" Private="false" />
+    <ProjectReference Include="../engine/src/Meitou.Data/Meitou.Data.csproj" Private="false" />
+    <ProjectReference Include="../engine/src/Meitou.Simulation/Meitou.Simulation.csproj" Private="false" />
+    <ProjectReference Include="../engine/src/Meitou.Game/Meitou.Game.csproj" Private="false" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="meitou.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
