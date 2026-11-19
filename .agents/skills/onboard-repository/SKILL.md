@@ -81,3 +81,5 @@ Report hosted check results, enforced rule evidence, reviewer requirements, buil
 GutenStructure alone requires PRs and passing CI on main, beta and release, but **zero required reviewers** and no mandatory code-owner approval. The owner does not intend to co-own it. Agents may review, validate and merge routine changes through one conceptually grouped PR; do not attempt a formal author self-approval through GitHub's review API.
 
 If a change needs the owner's personal testing, open its PR into beta and await feedback before promoting beta to main or release. Keep personally tested changes out of production until that feedback arrives. Do not apply this exception to any organization repository. Restrict Default environment secrets to reviewed main/release branches before granting collaborator write access; those secrets must not be available to arbitrary PR code.
+
+For external mod distribution read `.agents/skills/author-publishing/SKILL.md`: Nexus runs from author-owned personal repositories; Steam uses the local Workshop Watcher. Do not provision GitHub-hosted Steam credentials.
