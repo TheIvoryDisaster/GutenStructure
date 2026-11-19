@@ -29,15 +29,21 @@ def not_bypassable(ruleset):
     return ruleset.get("bypass_actors", []) == []
 
 
-def validate_rules(rules, details, personal=False):
+def validate_rules(rules, details, personal=False, repository=None):
     """At least one enforced ruleset must impose both reviews without bypass actors."""
     for rule in rules:
         parameters = rule.get("parameters", {})
         if rule.get("type") != "pull_request":
             continue
-        if not personal and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
-            continue
         ruleset = details(rule["ruleset_id"])
+        interim = (repository is not None and repository.startswith('Meitou-Modding-Ecosystem/')
+            and repository != 'Meitou-Modding-Ecosystem/Husbandry'
+            and ruleset.get('name') == 'Interim super-maintainer approval'
+            and parameters.get('required_approving_review_count', 0) >= 1
+            and parameters.get('required_reviewers') == [{'file_patterns':['**'], 'minimum_approvals':1,
+                 'reviewer':{'id':20738063,'type':'Team'}}])
+        if not personal and not interim and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
+            continue
         if ruleset.get("enforcement") == "active" and not_bypassable(ruleset):
             return
     raise RuntimeError("Release branch lacks the required enforced PR/review policy without bypass actors")
@@ -73,7 +79,7 @@ def check(api, repository, ref, commit):
     if api(f"repos/{repository}/codeowners/errors?ref=release").get("errors"):
         raise RuntimeError("GitHub reports invalid CODEOWNERS entries; publishing is blocked")
     rules = api(f"repos/{repository}/rules/branches/release")
-    validate_rules(rules, lambda ruleset_id: api(f"repos/{repository}/rulesets/{ruleset_id}"), personal=repository == "TheIvoryDisaster/GutenStructure")
+    validate_rules(rules, lambda ruleset_id: api(f"repos/{repository}/rulesets/{ruleset_id}"), personal=repository == "TheIvoryDisaster/GutenStructure", repository=repository)
     print("PASS: release head, ownership and repository-specific PR/review rules verified")
 
 
