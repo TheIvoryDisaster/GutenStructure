@@ -210,7 +210,8 @@ function New-WatcherSchedule {
     }
 
     if ($At) {
-        $normalized = (ConvertFrom-TimesOfDay -Text $At | ForEach-Object { '{0:hh\:mm}' -f $_ }) -join ','
+        $parsed = ConvertFrom-TimesOfDay -Text $At
+        $normalized = @(foreach ($time in $parsed) { '{0:hh\:mm}' -f $time }) -join ','
         return [pscustomobject]@{ at = $normalized }
     }
 
