@@ -5,6 +5,7 @@ import json
 import os
 import re
 import urllib.request
+import urllib.parse
 
 
 def pattern_regex(pattern):
@@ -105,6 +106,9 @@ def preview(repo, number, api):
                 raise
     if content is None:
         raise ValueError('Missing target-branch CODEOWNERS')
+    errors = api(f'{root}/codeowners/errors?ref={base}')
+    if errors.get('errors'):
+        raise ValueError('GitHub reports invalid target-branch CODEOWNERS')
     ownership = base64.b64decode(content['content']).decode('utf-8')
     files = pages(f'{root}/pulls/{number}/files')
     if len(files) != pr['changed_files']:
@@ -118,6 +122,10 @@ def preview(repo, number, api):
             org, slug = token[1:].split('/')
             if org.lower() != 'meitou-modding-ecosystem':
                 raise ValueError('Owner team outside organization')
+            team = api(f'orgs/{org}/teams/{slug}')
+            assigned = pages(f'{root}/teams')
+            if team.get('privacy') == 'secret' or not any(t['id'] == team['id'] and t.get('permission') in ('push', 'maintain', 'admin') for t in assigned):
+                raise ValueError('Code-owner team must be visible with explicit repository write access')
             users = [u['login'].lower() for u in pages(f'orgs/{org}/teams/{slug}/members')]
         else:
             users = [token[1:]]
