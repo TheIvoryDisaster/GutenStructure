@@ -231,7 +231,7 @@ function ConvertFrom-ScheduleAnswer {
 function Get-NextRunTime {
     param([Parameter(Mandatory)]$Schedule, [Parameter(Mandatory)][datetime]$After)
 
-    $names = @($Schedule.PSObject.Properties.Name)
+    $names = @($Schedule.PSObject.Properties | ForEach-Object { $_.Name })
     if ($names -contains 'every') { return $After.AddMinutes([int]$Schedule.every) }
     if ($names -contains 'at') { return Get-NextDailyTime -Times $Schedule.at -After $After }
     if ($names -contains 'cron') { return Get-NextCronTime -Expression $Schedule.cron -After $After }
@@ -241,7 +241,7 @@ function Get-NextRunTime {
 function Format-Schedule {
     param([Parameter(Mandatory)]$Schedule)
 
-    $names = @($Schedule.PSObject.Properties.Name)
+    $names = @($Schedule.PSObject.Properties | ForEach-Object { $_.Name })
     if ($names -contains 'every') { return "every $($Schedule.every) minutes" }
     if ($names -contains 'at') { return "daily at $($Schedule.at)" }
     return "cron '$($Schedule.cron)'"
@@ -274,7 +274,7 @@ function Get-ExpectedSha256 {
     param($Asset, [string]$Sidecar)
 
     $fromDigest = $null
-    if ($Asset.PSObject.Properties.Name -contains 'digest' -and "$($Asset.digest)" -match '^sha256:([0-9a-fA-F]{64})$') {
+    if ($Asset.PSObject.Properties['digest'] -and "$($Asset.digest)" -match '^sha256:([0-9a-fA-F]{64})$') {
         $fromDigest = $Matches[1].ToLowerInvariant()
     }
 
@@ -494,14 +494,14 @@ function Get-ItemKey { param($Item) return "$($Item.repo)#$($Item.itemId)" }
 function Set-ItemState {
     param($State, [string]$Key, $Value)
 
-    if ($State.PSObject.Properties.Name -contains $Key) { $State.$Key = $Value }
+    if ($State.PSObject.Properties[$Key]) { $State.$Key = $Value }
     else { $State | Add-Member -NotePropertyName $Key -NotePropertyValue $Value }
 }
 
 function Get-ItemState {
     param($State, [string]$Key)
 
-    if ($State.PSObject.Properties.Name -contains $Key) { return $State.$Key }
+    if ($State.PSObject.Properties[$Key]) { return $State.$Key }
     return $null
 }
 
@@ -937,7 +937,8 @@ function Invoke-Uninstall {
     Unregister-ScheduledTask -TaskName $script:TaskName -TaskPath $script:TaskPath -Confirm:$false -ErrorAction SilentlyContinue
     Write-Host 'Scheduled task removed.'
     if ($DeleteData) {
-        if (Test-Path (Get-DataDir)) { Remove-Item (Get-DataDir) -Recurse -Force }
+        if (-not (Test-Path (Get-DataDir))) { return }
+        Remove-Item (Get-DataDir) -Recurse -Force
         Write-Host "Deleted $(Get-DataDir), including steamcmd and its saved Steam login."
     }
 }
