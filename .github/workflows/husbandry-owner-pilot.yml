@@ -1,0 +1,33 @@
+name: Test Husbandry owner authorization (not enforced)
+on:
+  workflow_dispatch:
+  push:
+    branches: [beta]
+    paths: [.github/workflows/husbandry-owner-pilot.yml, scripts/husbandry_owner_pilot.py]
+permissions:
+  contents: read
+concurrency:
+  group: husbandry-owner-pilot
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    if: >-
+      github.repository == 'TheIvoryDisaster/GutenStructure' &&
+      (github.ref == 'refs/heads/beta' || github.ref == 'refs/heads/main')
+    environment: owner-check-pilot
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - run: python -m pip install cryptography==46.0.3
+      - name: Evaluate open Husbandry PRs using the dedicated App
+        env:
+          OWNER_APP_ID: '5828227'
+          OWNER_APP_INSTALLATION_ID: '183567989'
+          OWNER_APP_PRIVATE_KEY: ${{ secrets.OWNER_APP_PRIVATE_KEY }}
+        run: python -m scripts.husbandry_owner_pilot
