@@ -201,7 +201,7 @@ function Get-NextDailyTime {
 function New-WatcherSchedule {
     param([int]$Every, [string]$At, [string]$Cron)
 
-    $given = @(@($Every -gt 0, [bool]$At, [bool]$Cron) | Where-Object { $_ }).Count
+    $given = @(@(($Every -gt 0), [bool]$At, [bool]$Cron) | Where-Object { $_ }).Count
     if ($given -ne 1) { throw 'Give exactly one of -Every <minutes>, -At <HH:mm[,HH:mm...]> or -Cron "<expression>".' }
 
     if ($Every -gt 0) {
