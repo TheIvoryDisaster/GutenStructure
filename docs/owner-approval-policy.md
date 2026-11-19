@@ -44,3 +44,11 @@ App `meitou-owner-authorization`, ID **5828227**, installation **183567989**. Pu
 In personally owned GutenStructure create environment **owner-check-pilot**. Restrict its deployment branches to beta/main and require your approval where supported; permit self-review if you initiate it. Add environment secret **OWNER_APP_PRIVATE_KEY** containing the complete downloaded PEM, including BEGIN/END lines. Do not send it in chat. No private key is stored in Terraform state or source.
 
 The new read-only `owner-app-probe.yml` runs when this pilot is merged into beta (or by manual dispatch once registered on default main). It authenticates the exact App, checks the installation's accepted permissions/all-repository selection and lists public repository identities using a downscoped read-only installation token. It posts no checks, changes no rules, and never lists private names. The App key still has the App's full signing authority: keep the environment restricted and trusted code reviewed. This probe can run before deploying the webhook service; it does not need a webhook secret.
+
+### Husbandry pilot
+
+The initial pilot is **Meitou-Modding-Ecosystem/Husbandry**, immutable repo ID **1462282676**. Its beta fallback CODEOWNER is `@Meitou-Modding-Ecosystem/super-maintainers`.
+
+`husbandry-owner-pilot.yml` can post App-owned **Meitou owner authorization (pilot)** checks on open protected PRs without changing any rules. This shadow check deliberately differs from the eventual required check. Create the intended test PRs, run the trusted personal workflow, and inspect their check conclusions. Until webhook deployment, reevaluation is manual: new commits, approvals and dismissals require another pilot run. Passing this pilot must not be presented as enforced merge protection. For owner-authored beta PRs expect pass; for release expect fail until independent current-head approval. A non-owner beta PR needs applicable owner approval. No open PRs means a successful access scan, not a successful authorization test.
+
+Only after those decisions and webhook revocation/update behavior are verified should the production check replace native review requirements on Husbandry. Keep unrelated repos unchanged during the initial test, then roll out using the coordinated gate/reconciliation migration described above.
