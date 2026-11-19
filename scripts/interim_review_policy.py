@@ -52,8 +52,8 @@ def synchronize(api, plan, apply=False):
         # Prove admin scope before any changes across the selected inventory.
         api(f'repos/{repo}/actions/permissions')
         assigned=api(f'repos/{repo}/teams?per_page=100')
-        if len(assigned)>=100 or not any(t['id']==TEAM_ID and t.get('permission') in ('push','maintain','admin') for t in assigned):
-            raise ValueError(f'{repo}: super-maintainers needs repository write access')
+        if len(assigned)>=100: raise ValueError('Incomplete team assignment inventory')
+        grant_team = not any(t['id']==TEAM_ID and t.get('permission') in ('push','maintain','admin') for t in assigned)
         listing=api(f'repos/{repo}/rulesets?includes_parents=true&per_page=100')
         if len(listing)>=100: raise ValueError('Incomplete ruleset inventory')
         if any(r.get('source_type')=='Organization' for r in listing):
@@ -69,7 +69,10 @@ def synchronize(api, plan, apply=False):
         target=ruleset(NAME,['beta','main','release'],[review()])
         found=[r for r in existing if r['name']==NAME]
         if len(found)>1: raise ValueError('Duplicate interim policy')
-        operations=[('PUT' if found else 'POST',f'repos/{repo}/rulesets'+('/'+str(found[0]['id']) if found else ''),target)]
+        operations=[]
+        if grant_team:
+            operations.append(('PUT',f'orgs/{ORG}/teams/{TEAM}/repos/{repo}',{'permission':'push'}))
+        operations += [('PUT' if found else 'POST',f'repos/{repo}/rulesets'+('/'+str(found[0]['id']) if found else ''),target)]
         for old in existing:
             if old['name']==NAME: continue
             refs=old.get('conditions',{}).get('ref_name',{})
