@@ -81,3 +81,7 @@ Report hosted check results, enforced rule evidence, reviewer requirements, buil
 GutenStructure alone requires PRs and passing CI on main, beta and release, but **zero required reviewers** and no mandatory code-owner approval. The owner does not intend to co-own it. Agents may review, validate and merge routine changes through one conceptually grouped PR; do not attempt a formal author self-approval through GitHub's review API.
 
 If a change needs the owner's personal testing, open its PR into beta and await feedback before promoting beta to main or release. Keep personally tested changes out of production until that feedback arrives. Do not apply this exception to any organization repository. Restrict Default environment secrets to reviewed main/release branches before granting collaborator write access; those secrets must not be available to arbitrary PR code.
+
+## Temporary review simplification (revision 3)
+
+The latest user instruction supersedes the older branch tiers for public org repos except Husbandry: see `docs/interim-review-policy.md`. Require one native super-maintainers approval on beta/main/release, no CODEOWNERS dependency or review bypass, preserve CI/security, and exclude Husbandry from every mutation. Probe/read back required-team API support before relaxing rules. Update immutable release-gate/package callers after central promotion; old pins are not automatically changed. The custom App rollout remains Husbandry-only until tested.

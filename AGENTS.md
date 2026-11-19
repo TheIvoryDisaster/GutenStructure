@@ -7,3 +7,5 @@ Keep personally controlled workflows and Azure administration separate from orga
 Group conceptually related changes into one PR. Changes requiring the owner's personal testing must target beta and await feedback before beta is promoted to main or release. Do not bypass GitHub rules, environment approvals or an automatic approval rejection. Explicit updated user instructions take precedence over older repository guidance.
 
 Never commit credentials, Terraform state/plans, original Kenshi assets or sensitive workflow output. Distinguish tested source, enforced policies and deployed infrastructure; a configuration file or passing unit test alone is not live enforcement.
+
+Temporary user-approved policy revision 3 overrides the older organization review counts above: one native super-maintainers approval on beta/main/release for public repos except Husbandry, with CI/security retained and no review bypass. Husbandry remains the custom-policy pilot. See docs/interim-review-policy.md; never change immutable helper pins without reviewed caller updates.
