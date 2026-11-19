@@ -57,3 +57,15 @@ class HistoryOnlyTests(unittest.TestCase):
     def test_empty_release_diff_still_needs_independent_review(self):
         from scripts.owner_approval import evaluate
         self.assertFalse(evaluate('alice','head','release',[],'* @alice',[],{'@alice':{'alice'}})[0])
+
+class ProbeTests(unittest.TestCase):
+    def test_probe_reads_only_and_hides_private_repo_names(self):
+        from scripts.owner_app_probe import probe
+        def api(path):
+            return {'repositories': [
+                {'id':1,'full_name':'Meitou-Modding-Ecosystem/Public','owner':{'id':357134506},'private':False},
+                {'id':2,'full_name':'Meitou-Modding-Ecosystem/Secret','owner':{'id':357134506},'private':True}]}
+        result = probe(api,5828227)
+        self.assertEqual(result['checks_written'],0)
+        self.assertEqual(result['private_repositories_skipped'],1)
+        self.assertNotIn('Secret',json.dumps(result))

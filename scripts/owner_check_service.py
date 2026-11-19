@@ -48,7 +48,7 @@ def app_jwt():
     return (unsigned + b'.' + encode(signature)).decode()
 
 
-def installation_api():
+def installation_api(read_only=False):
     installation = os.environ['OWNER_APP_INSTALLATION_ID']
     if not installation.isdigit():
         raise ValueError('Invalid installation ID')
@@ -57,7 +57,7 @@ def installation_api():
     if info['account']['id'] != ORG_ID or info.get('suspended_at'):
         raise ValueError('App installation outside the approved organization')
     result = token_request('app/installations/' + installation + '/access_tokens', jwt, 'POST', {
-        'permissions': {'contents': 'read', 'pull_requests': 'read', 'checks': 'write', 'members': 'read', 'metadata': 'read', 'administration': 'read'}})
+        'permissions': {'contents': 'read', 'pull_requests': 'read', 'checks': 'read' if read_only else 'write', 'members': 'read', 'metadata': 'read', 'administration': 'read'}})
     token = result['token']
     return lambda path, method='GET', data=None: token_request(path, token, method, data)
 
