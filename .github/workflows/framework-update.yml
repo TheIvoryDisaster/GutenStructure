@@ -103,7 +103,7 @@ jobs:
           git -C engine checkout --detach "$engine"
           echo "$engine" > "$RUNNER_TEMP/engine.txt"
           cat "$RUNNER_TEMP/framework-update.md" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         if: steps.lock.outputs.changed == 'true'
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
