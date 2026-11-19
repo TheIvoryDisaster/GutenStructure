@@ -56,3 +56,5 @@ Secrets belong in GutenStructure's **Default environment**: `MEITOU_PROJECT_TOKE
 Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconciliation path covers future **public** repositories; future private repositories need a separately reviewed private execution path and plan support. Until protections are applied and verified, production gates must remain closed.
 
 Dependency consumers: [Rivalry Core CI and promotion handoff](docs/dependency-consumer-ci.md), including the TWR baseline caller, beta bootstrap, approval requirements and deferred lock/trigger work.
+
+Staged exact owner-author approval policy: [preview and secure rollout](docs/owner-approval-policy.md). Current branch protections remain in force until the trusted App check is tested and deployed.

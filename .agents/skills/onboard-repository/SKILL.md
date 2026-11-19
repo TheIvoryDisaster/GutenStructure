@@ -81,3 +81,7 @@ Report hosted check results, enforced rule evidence, reviewer requirements, buil
 GutenStructure alone requires PRs and passing CI on main, beta and release, but **zero required reviewers** and no mandatory code-owner approval. The owner does not intend to co-own it. Agents may review, validate and merge routine changes through one conceptually grouped PR; do not attempt a formal author self-approval through GitHub's review API.
 
 If a change needs the owner's personal testing, open its PR into beta and await feedback before promoting beta to main or release. Keep personally tested changes out of production until that feedback arrives. Do not apply this exception to any organization repository. Restrict Default environment secrets to reviewed main/release branches before granting collaborator write access; those secrets must not be available to arbitrary PR code.
+
+## Staged owner-author policy revision
+
+The owner requested code-owner authorship to authorize the author's paths, with at least one independent approval on releases. See [the staged policy](../../../docs/owner-approval-policy.md). The read-only evaluator is not enforcement. Keep existing protections until a dedicated App-bound check, event handling and release-gate migration are tested and promoted. Do not emulate this by granting blanket bypass or accepting a forgeable Actions status.
