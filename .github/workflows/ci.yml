@@ -37,10 +37,34 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python scripts/sync_project.py --validate-only
       - run: python -m scripts.apply_release_policy --validate-only
+  workshop-watcher:
+    name: Workshop watcher (${{ matrix.shell }})
+    runs-on: windows-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # powershell is Windows PowerShell 5.1, which every modder's PC has; pwsh is PowerShell 7.
+        shell: [powershell, pwsh]
+    defaults:
+      run:
+        shell: ${{ matrix.shell }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Pester
+        run: |
+          if ($PSVersionTable.PSVersion.Major -lt 6) { Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null }
+          Install-Module Pester -RequiredVersion 5.7.1 -Force -SkipPublisherCheck -Scope CurrentUser
+      - name: Test
+        run: |
+          Import-Module Pester -RequiredVersion 5.7.1
+          Invoke-Pester -Path tests/workshop-watcher -Output Detailed -CI
   release-readiness:
     name: Release readiness
     if: always()
-    needs: [terraform, automation]
+    needs: [terraform, automation, workshop-watcher]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
