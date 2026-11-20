@@ -1,3 +1,5 @@
+> Historical revision 3. Superseded by [permanent revision 4](branch-policy.md), including Husbandry and beta review-only bypass.
+
 # Interim native team approval
 
 Until the custom owner-authorization service is ready, all public organization repositories **except Husbandry** use one independent approval from `Meitou-Modding-Ecosystem/super-maintainers` on beta/main/release. This native required-reviewing-team rule does not depend on per-path CODEOWNERS. Authors cannot approve themselves. No maintainer/Actions review bypass remains. Ordinary branches and upstream mirror branches retain their current behavior.
