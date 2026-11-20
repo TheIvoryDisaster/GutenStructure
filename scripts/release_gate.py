@@ -37,8 +37,8 @@ def validate_rules(rules, details, personal=False, repository=None):
             continue
         ruleset = details(rule["ruleset_id"])
         interim = (repository is not None and repository.startswith('Meitou-Modding-Ecosystem/')
-            and repository != 'Meitou-Modding-Ecosystem/Husbandry'
-            and ruleset.get('name') == 'Interim super-maintainer approval'
+            and (ruleset.get('name') == 'Meitou main and release approval' or
+                 repository != 'Meitou-Modding-Ecosystem/Husbandry' and ruleset.get('name') == 'Interim super-maintainer approval')
             and parameters.get('required_approving_review_count', 0) >= 1
             and parameters.get('required_reviewers') == [{'file_patterns':['**'], 'minimum_approvals':1,
                  'reviewer':{'id':20738063,'type':'Team'}}])
@@ -63,6 +63,14 @@ def check(api, repository, ref, commit):
     branch = api(f"repos/{repository}/branches/release")
     if branch["commit"]["sha"] != commit:
         raise RuntimeError("Release commit must exactly match the release branch head")
+    native_rules = api(f"repos/{repository}/rules/branches/release")
+    if isinstance(native_rules, list) and any(
+            r.get('type') == 'pull_request' and r.get('parameters', {}).get('required_reviewers')
+            and api(f"repos/{repository}/rulesets/{r['ruleset_id']}").get('name') == 'Meitou main and release approval'
+            for r in native_rules):
+        validate_rules(native_rules, lambda rid: api(f"repos/{repository}/rulesets/{rid}"), repository=repository)
+        print("PASS: current release head and permanent independent super-maintainer policy verified")
+        return
     owner_text = None
     for path in (".github/CODEOWNERS", "CODEOWNERS", "docs/CODEOWNERS"):
         try:

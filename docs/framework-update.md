@@ -2,7 +2,7 @@
 
 [framework-update.yml](../.github/workflows/framework-update.yml) keeps a mod repository's [framework lock](framework-lock.md) on the newest
 published releases. When a framework (Rivalry Core, Logistics Core, ...) publishes a release, the next run moves `meitou.lock.json` to it,
-builds and tests the mod, and opens a PR into `beta` that it merges when the mod's CI is green. A PR that fails stays open as the regression
+builds and tests the mod, and opens a PR into `beta`. Under permanent revision 4, a super-maintainer reviews/merges it after CI passes. A PR that fails stays open as the regression
 report. It polls releases on a schedule, so no framework repository needs a token for its dependents.
 
 ## Use it
@@ -42,8 +42,7 @@ jobs:
 4. Moves `engine` to that commit, builds and tests `test-project` with the strict engine check.
 5. Commits the lock, the widened manifests and the engine pointer to `framework-update/<channel>`, opens or updates one PR into `base`,
    dispatches CI on it and waits.
-6. Merges it (`merge`, default on) when both the run's tests and CI pass. Org repositories allow this on `beta` only: GitHub Actions has
-   PR-only review bypass there ([releases](releases.md)). Where a base branch's rules still need a review, the PR stays open, green, for a
+6. Merges it (`merge`, default on) when both the run's tests and CI pass. Permanent organization policy grants no GitHub Actions review bypass; a super-maintainer must review/merge the PR ([policy](branch-policy.md)). Where a base branch's rules still need a review, the PR stays open, green, for a
    maintainer to merge. A failing PR stays open and the run fails.
 
 A run that finds nothing newer, or the same releases an open PR already holds, changes nothing.

@@ -24,9 +24,9 @@ Keep existing inputs, caller-job `contents: write`, and the production job's exp
 
 ## Production and approvals
 
-RivalryCore #68 is the separate production promotion. It requires two distinct reviewers, including an applicable code owner; author self-approval and the beta/main review bypass do not satisfy release policy. After merge, verify the manifest is 0.6.0 and create `rivalry-core-v0.6.0` at the current reviewed release head. Do not tag beta or the unmerged PR head. Verify the production workflow, artifact digest and release notes before consumers switch from their beta snapshot.
+RivalryCore #68 is the separate production promotion. Current permanent release policy requires one independent super-maintainers approval; beta review bypass does not apply to release. After merge, verify the manifest is 0.6.0 and create `rivalry-core-v0.6.0` at the current reviewed release head. Do not tag beta or the unmerged PR head. Verify the production workflow, artifact digest and release notes before consumers switch from their beta snapshot.
 
-GutenStructure is the personal exception: PRs and passing CI, zero required reviewers. Changes needing owner testing go through beta and await feedback before promotion. Organization beta/main use code-owner review with the documented super-maintainers review-rule exception; mandatory CI remains enforced. See [release policy](releases.md).
+GutenStructure is the personal exception: PRs and passing CI, zero required reviewers. Changes needing owner testing go through beta and await feedback before promotion. Organization beta permits super-maintainers review bypass; main/release require an independent super-maintainer approval; mandatory CI remains enforced. See [release policy](releases.md).
 
 ## Deliberately deferred
 
