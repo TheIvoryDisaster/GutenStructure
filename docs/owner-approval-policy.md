@@ -1,3 +1,5 @@
+> Retired experiment. Permanent native revision 4 applies to all organization repos, including Husbandry. See [branch-policy.md](branch-policy.md). The App service/pilot described below is not required and its active pilot workflows have been removed.
+
 # Owner-author approval policy (staged, not enforced)
 
 An applicable code owner's authorship authorizes their paths. On beta/main, other paths require an applicable owner's current approval. Release additionally requires at least one eligible non-author approval on the current head. A non-author code owner's approval can satisfy both conditions. Every changed path must be authorized; rename source and destination are checked. Outstanding changes-requested reviews block the preview.

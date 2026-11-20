@@ -61,6 +61,7 @@
     }
   ],
   "reconcile_future_public_repositories": true,
-  "policy_version": 2,
-  "codeowner_self_merge_team": "super-maintainers"
+  "policy_version": 4,
+  "codeowner_self_merge_team": "super-maintainers",
+  "branch_policy": "permanent-native-team-with-beta-review-bypass"
 }

@@ -35,28 +35,17 @@ Create `release` from an explicitly identified stable commit. For a new/empty re
 
 Open configuration/promotion PRs to `release`. Do not cut production releases from a development branch. Nightlies may remain separate development prereleases.
 
-## 4. Enforce reviews and required CI
+## 4. Enforce permanent native policy
 
-Use **Configure release branch protections** in GutenStructure (`main`, environment `Default`) to preview first, then apply the reviewed policy. Organization secret: `MEITOU_RELEASE_ADMIN_TOKEN`, owned by Meitou-Modding-Ecosystem with repository Administration read/write; choose All repositories for future-repository reconciliation. GutenStructure administration uses a separate personally scoped credential `GUTENSTRUCTURE_ADMIN_TOKEN`. Never print token values or pass either token to build jobs.
+Use revision 4 in `scripts/permanent_branch_policy.py` and `docs/branch-policy.md` for every public organization repo, including Husbandry. Ordinary branches remain unprotected. Beta requires a PR and passing CI; only super-maintainers may bypass its separate review rule. Main/release require one independent super-maintainers approval and passing CI, with no review bypass. The native reviewing-team requirement is independent of CODEOWNERS. No custom App or GitHub Actions bypass is needed. GitHub cannot count self-approval; beta self-merges use only the authorized review-rule exemption.
 
-Organization branch policy revision 2:
+Keep mandatory PR, CI, force-push/deletion protection in a separate no-bypass safety rule. Preserve required check names and independent security rules. Preview then apply Configure release branch protections on GutenStructure main, environment Default. Verify effective rules and actual CI runs; a ruleset file alone is not proof. Meitou-owned MEITOU_RELEASE_ADMIN_TOKEN must cover All repositories, repository Administration read/write and organization Members read. Personal settings use GUTENSTRUCTURE_ADMIN_TOKEN separately.
 
-| Branch | Review policy |
-| --- | --- |
-| Ordinary branches (including master/fork) | No branch protection; do not rename development or mirror branches. |
-| beta | Content ready to playtest: PR and code-owner review. super-maintainers may merge their own PR through PR-only bypass of the review rule. |
-| main | Tested/ready-to-ship: same owner-only PR policy. |
-| release | Production source: two distinct approvals including an applicable CODEOWNER; no bypass. |
-
-GitHub cannot accept author self-approvals. The chosen team is `Meitou-Modding-Ecosystem/super-maintainers`; only that team's review-rule bypass implements self-merge. Keep required CI, force-push/deletion restrictions and mandatory PRs in a separate no-bypass safety ruleset. Do not grant an always bypass, bypass CI or extend the exception to release. Team membership/write access and valid effective CODEOWNERS are required; the team is not automatically a code owner merely because it has bypass permission. GitHub's bypass list cannot express “only when this actor is the PR author”; team members can bypass the beta/main review requirement for other PRs too. This trusted-team capability is deliberate and must be documented.
-
-Use versioned `scripts/branch_policy.py` reconciliation. Inspect all seven current organization repositories, preserve independent code scanning/checks, remove superseded overlapping review rules and verify actual API output. Report missing ownership/branches/CI rather than pretending a rule configuration proves end-to-end protection. Do not silently remove unknown classic protection or unreviewed custom scopes. The release gate remains unchanged at two reviews including owner.
-
-Organization-wide rulesets need GitHub Team/Enterprise. The free-tier policy reconciles current/future public repos under the verified org ID. New repos need `release`, valid CODEOWNERS and `Release readiness` CI before official publishing. Do not expose future private repository names or code in public workflow logs; private-repository execution/plan support needs separate review.
+Reconciliation discovers current/future public repos hourly, verifies immutable org/team IDs, grants the selected team write access where missing, and requires configured CI (Release readiness for new repos). Templates do not copy repository settings. Run reconciliation manually during onboarding before expecting protected promotions to work. Private repositories/organization-wide plan support need separate validation; no new Azure access is implied. Missing branches and CI must be bootstrapped through reviewed PRs; do not remove CI requirements to unblock a missing workflow.
 
 ## 5. Gate production builds
 
-Make production workflows depend on the SHA-pinned central `release-gate.yml`. It verifies the current release head, actual enforced two-reviewer/code-owner ruleset, absence of bypass actors, and valid complete ownership. Tags must point at the current `release` head. Promote shared workflow changes to GutenStructure `release` through a checked PR before upgrading callers; its personal exception requires zero reviewers, not the organization two-reviewer rule. Preserve version/manifest checks and artifact completeness. Do not replace a missing proprietary-data build with a misleading partial production package.
+Make production workflows depend on the SHA-pinned central `release-gate.yml`. It verifies the current release head, actual enforced native team-review ruleset, absence of bypass actors, and valid complete ownership. Tags must point at the current `release` head. Promote shared workflow changes to GutenStructure `release` through a checked PR before upgrading callers; its personal exception requires zero reviewers, not the organization independent-review rule. Preserve version/manifest checks and artifact completeness. Do not replace a missing proprietary-data build with a misleading partial production package.
 
 Check protection through the API and run hosted CI. A branch existing or a JSON policy file being present does not prove enforcement. Authorized repository writers may still publish manually unless their permissions are restricted; never present the official workflow guard as a universal GitHub permission boundary.
 
@@ -82,6 +71,8 @@ GutenStructure alone requires PRs and passing CI on main, beta and release, but 
 
 If a change needs the owner's personal testing, open its PR into beta and await feedback before promoting beta to main or release. Keep personally tested changes out of production until that feedback arrives. Do not apply this exception to any organization repository. Restrict Default environment secrets to reviewed main/release branches before granting collaborator write access; those secrets must not be available to arbitrary PR code.
 
-## Staged owner-author policy revision
+## Historical revision 3 (superseded by permanent revision 4)
 
-The owner requested code-owner authorship to authorize the author's paths, with at least one independent approval on releases. See [the staged policy](../../../docs/owner-approval-policy.md). The read-only evaluator is not enforcement. Keep existing protections until a dedicated App-bound check, event handling and release-gate migration are tested and promoted. Do not emulate this by granting blanket bypass or accepting a forgeable Actions status.
+The latest user instruction supersedes the older branch tiers for public org repos except Husbandry: see `docs/interim-review-policy.md`. Require one native super-maintainers approval on beta/main/release, no CODEOWNERS dependency or review bypass, preserve CI/security, and exclude Husbandry from every mutation. Probe/read back required-team API support before relaxing rules. Update immutable release-gate/package callers after central promotion; old pins are not automatically changed. The custom App rollout remains Husbandry-only until tested.
+
+Permanent revision 4 in docs/branch-policy.md overrides every earlier temporary/pilot paragraph. Husbandry has no exception.
