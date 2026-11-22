@@ -11,8 +11,10 @@ ALLOWED = {"TheIvoryDisaster/GutenStructure", *("Meitou-Modding-Ecosystem/" + na
 
 
 # Policy revision 5 (docs/branch-policy.md): the owner's one-person team may merge main/release promotion PRs without an approval.
-# Named by slug; its ID is looked up when needed. Kept here because this script runs standalone; the branch reconciliation imports it.
+# Pinned by ID, so renaming or recreating a team can't move the bypass. Kept here because this script runs standalone; the branch
+# reconciliation imports both.
 RELEASE_TEAM = "release-debugger"
+RELEASE_TEAM_ID = 20828147
 
 
 class MissingResource(RuntimeError):
@@ -40,17 +42,7 @@ def release_bypass(team_id):
     return {"actor_type": "Team", "actor_id": team_id, "bypass_mode": "pull_request"}
 
 
-def release_team_id(api):
-    """The release team's ID by its slug, or None when this token can't read it. A token that sees a ruleset's bypass list can
-    administer it and so read the team; a workflow token sees neither, and the hidden-list case needs no ID."""
-    try:
-        team = api(f"orgs/Meitou-Modding-Ecosystem/teams/{RELEASE_TEAM}")
-    except RuntimeError:
-        return None
-    return team.get("id") if team.get("slug") == RELEASE_TEAM and isinstance(team.get("id"), int) else None
-
-
-def validate_rules(rules, details, personal=False, repository=None, release_team=None):
+def validate_rules(rules, details, personal=False, repository=None, release_team=RELEASE_TEAM_ID):
     """At least one enforced ruleset must impose both reviews without bypass actors."""
     for rule in rules:
         parameters = rule.get("parameters", {})
@@ -66,7 +58,7 @@ def validate_rules(rules, details, personal=False, repository=None, release_team
         if not personal and not interim and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
             continue
         stable = interim and ruleset.get("name") == "Meitou main and release approval"
-        allowed = [release_bypass(release_team)] if stable and release_team is not None else []
+        allowed = [release_bypass(release_team)] if stable else []
         if ruleset.get("enforcement") == "active" and not_bypassable(ruleset, allowed):
             return
     raise RuntimeError("Release branch lacks the required enforced PR/review policy without bypass actors")
@@ -91,8 +83,7 @@ def check(api, repository, ref, commit):
             r.get('type') == 'pull_request' and r.get('parameters', {}).get('required_reviewers')
             and api(f"repos/{repository}/rulesets/{r['ruleset_id']}").get('name') == 'Meitou main and release approval'
             for r in native_rules):
-        validate_rules(native_rules, lambda rid: api(f"repos/{repository}/rulesets/{rid}"), repository=repository,
-                       release_team=release_team_id(api))
+        validate_rules(native_rules, lambda rid: api(f"repos/{repository}/rulesets/{rid}"), repository=repository)
         print("PASS: current release head and permanent super-maintainer policy (release team PR bypass only) verified")
         return
     owner_text = None

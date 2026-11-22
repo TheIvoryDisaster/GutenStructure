@@ -3,7 +3,7 @@ import copy
 from scripts.apply_release_policy import discover_repositories, optional, GitHubFailure
 from scripts.branch_policy import ORG, TEAM, ruleset
 from scripts.interim_review_policy import TEAM_ID, CUSTOM_CHECKS, review, capability_probe
-from scripts.release_gate import RELEASE_TEAM, release_bypass
+from scripts.release_gate import RELEASE_TEAM, RELEASE_TEAM_ID, release_bypass
 
 SAFETY = 'Meitou mandatory PR and CI'
 BETA = 'Meitou beta maintainer review'
@@ -54,7 +54,7 @@ def synchronize(api, plan, apply=False):
     if not members or len(members)>=100:raise ValueError('Incomplete team member inventory')
     release_team=api(f'orgs/{ORG}/teams/{RELEASE_TEAM}')
     release_team_id=release_team.get('id')
-    if release_team.get('slug')!=RELEASE_TEAM or not isinstance(release_team_id,int) or release_team_id==TEAM_ID:
+    if release_team_id!=RELEASE_TEAM_ID or RELEASE_TEAM_ID==TEAM_ID:
         raise ValueError('Unexpected release bypass team')
     release_members=api(f'orgs/{ORG}/teams/{RELEASE_TEAM}/members?per_page=100')
     if not release_members or len(release_members)>=100:raise ValueError('Incomplete release team member inventory')
