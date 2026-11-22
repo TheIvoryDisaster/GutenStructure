@@ -58,7 +58,9 @@ class FrameworkUpdateTests(unittest.TestCase):
             manifest = {"id": "ashen.hand", "dependencies": [{"id": "rivalry.core", "version": ">=0.6.0 <0.7.0"}]}
             (root / "Mod" / "meitou.json").write_text(json.dumps(manifest))
             notes = []
-            widen_manifests(root, {"rivalry.core": (0, 7, 0)}, notes)
+            changed = widen_manifests(root, {"rivalry.core": (0, 7, 0)}, notes)
+            self.assertEqual(changed, [root / "Mod" / "meitou.json"])
+            self.assertEqual(widen_manifests(root, {"rivalry.core": (0, 7, 1)}, notes), [])
             written = json.loads((root / "Mod" / "meitou.json").read_text())
             self.assertEqual(written["dependencies"][0]["version"], ">=0.6.0 <0.8.0")
             self.assertEqual(len(notes), 1)
