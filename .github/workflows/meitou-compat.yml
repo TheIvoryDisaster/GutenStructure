@@ -1,0 +1,236 @@
+# Reusable: checks the caller's mods against the Meitou releases they will meet, daily (docs/meitou-compat.md).
+#
+# - check (read-only token, no persisted credentials): builds the caller's mods and runs GutenStructure's scripts/meitou_compat.py with
+#   tools/refcheck against the newest full Meitou release, the newest nightly and each gameVersion floor. Uploads the report. Nothing is
+#   written to the repository here.
+# - report (issues, contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): keeps one
+#   open issue labelled meitou-compat in step with the report (opened, updated, closed once clean), and when a cap can move, commits the lifted
+#   manifests to meitou-compat/cap-lift, opens the PR labelled needs-release, dispatches the caller's CI and merges when it is green and the
+#   base branch's rules allow. No secrets are accepted; callers must not pass secrets: inherit.
+name: Meitou compatibility
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        description: Branch checked, and the cap-lift PR's base.
+        type: string
+        default: beta
+      ci-workflow:
+        description: The caller's CI workflow file, dispatched on the cap-lift branch; it must accept workflow_dispatch.
+        type: string
+        default: ci.yml
+      lift-caps:
+        description: Open a PR lifting a gameVersion cap when a full release above it breaks nothing.
+        type: boolean
+        default: true
+      merge:
+        description: Merge the cap-lift PR once the caller's CI is green.
+        type: boolean
+        default: true
+      tools-ref:
+        description: The GutenStructure ref RefCheck and the script come from; pin it to the same commit as this workflow.
+        type: string
+        default: main
+      dotnet-version:
+        type: string
+        default: 11.0.x
+    outputs:
+      issues:
+        description: How many problems need a person (0 when clean).
+        value: ${{ jobs.check.outputs.issues }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meitou-compat-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      issues: ${{ steps.watch.outputs.issues }}
+    steps:
+      - name: Validate inputs
+        env:
+          BASE: ${{ inputs.base }}
+          CI_WORKFLOW: ${{ inputs.ci-workflow }}
+          TOOLS_REF: ${{ inputs.tools-ref }}
+        run: |
+          [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ && "$TOOLS_REF" =~ ^[A-Za-z0-9._/-]+$ ]] \
+            || { echo "invalid base, ci-workflow or tools-ref" >&2; exit 1; }
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.base }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: ${{ inputs.tools-ref }}
+          path: _gutenstructure
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Build RefCheck
+        run: dotnet build "$GITHUB_WORKSPACE/_gutenstructure/tools/refcheck/RefCheck.csproj" -c Release -o "$RUNNER_TEMP/refcheck" -nologo -v q
+      - name: Check the mods against Meitou
+        id: watch
+        env:
+          MeitouFrameworksStrict: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          out="$RUNNER_TEMP/compat"
+          set +e
+          python3 -I "$GITHUB_WORKSPACE/_gutenstructure/scripts/meitou_compat.py" --root . --refcheck "$RUNNER_TEMP/refcheck/RefCheck.dll" \
+            --out "$out" --cache "$RUNNER_TEMP/meitou-releases"
+          status=$?
+          set -e
+          [ "$status" -le 1 ] || exit "$status"
+          mkdir -p "$out"
+          [ -f "$out/report.json" ] || echo '{"issues": [], "warnings": [], "lifts": {}, "checks": [], "newest": null}' > "$out/report.json"
+          rm -rf "${out:?}/build"
+          echo "issues=$(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))["issues"]))' "$out/report.json")" >> "$GITHUB_OUTPUT"
+          for f in issue.md lift.md; do [ -f "$out/$f" ] && cat "$out/$f" >> "$GITHUB_STEP_SUMMARY"; done
+          true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: meitou-compat
+          path: ${{ runner.temp }}/compat
+          retention-days: 7
+
+  report:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BASE: ${{ inputs.base }}
+      BRANCH: meitou-compat/cap-lift
+      CI_WORKFLOW: ${{ inputs.ci-workflow }}
+      MERGE: ${{ inputs.merge }}
+      LIFT: ${{ inputs.lift-caps }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: meitou-compat
+          path: ${{ runner.temp }}/compat
+      - name: Keep the issue in step
+        run: |
+          compat="$RUNNER_TEMP/compat"
+          gh label create meitou-compat --color B60205 --description "The Meitou compatibility watch found a problem" --force
+          gh label create "meitou-compat: nightly" --color FBCA04 --description "Only a Meitou nightly breaks; a warning" --force
+          number=$(gh issue list --label meitou-compat --state open --json number --jq '.[0].number // empty')
+          if [ ! -f "$compat/issue.md" ]; then
+            [ -z "$number" ] || gh issue close "$number" --comment "The Meitou compatibility watch passes again."
+            exit 0
+          fi
+          issues=$(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))["issues"]))' "$compat/report.json")
+          if [ "$issues" -gt 0 ]; then title="Meitou compatibility: $issues problem(s)"; nightly=false; else title="Meitou nightly: a coming release breaks this repository"; nightly=true; fi
+          if [ -z "$number" ]; then
+            # The search behind gh issue list lags a new issue: take the number from the URL gh issue create prints.
+            url=$(gh issue create --title "$title" --body-file "$compat/issue.md" --label meitou-compat)
+            number="${url##*/}"
+          else
+            gh issue edit "$number" --title "$title" --body-file "$compat/issue.md"
+          fi
+          if [ "$nightly" = true ]; then gh issue edit "$number" --add-label "meitou-compat: nightly"; else gh issue edit "$number" --remove-label "meitou-compat: nightly"; fi
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: inputs.lift-caps
+        with:
+          ref: ${{ inputs.base }}
+          path: caller
+          persist-credentials: true
+      - name: Commit the lifted caps to their branch
+        id: commit
+        if: inputs.lift-caps
+        working-directory: caller
+        run: |
+          lift="$RUNNER_TEMP/compat/lift"
+          [ -d "$lift" ] || { echo "pushed=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          paths=$(cd "$lift" && find . -type f | sed 's|^\./||')
+          for path in $paths; do
+            [[ "$path" =~ ^[A-Za-z0-9._-]+/meitou\.json$ ]] || { echo "unexpected path $path" >&2; exit 1; }
+            cp "$lift/$path" "$path"
+          done
+          git add $paths
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -F - <<< "Admit the newest Meitou release"$'\n\n'"$(cat "$RUNNER_TEMP/compat/lift.md")"
+          if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git push -q --force origin "HEAD:refs/heads/$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Open or update the PR
+        id: pr
+        if: steps.commit.outputs.pushed == 'true'
+        run: |
+          body="$RUNNER_TEMP/compat/lift.md"
+          newest=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["newest"])' "$RUNNER_TEMP/compat/report.json")
+          title="Meitou: Admit $newest"
+          number=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$number" ]; then
+            url=$(gh pr create --head "$BRANCH" --base "$BASE" --title "$title" --body-file "$body")
+            number="${url##*/}"
+          else
+            gh pr edit "$number" --title "$title" --body-file "$body"
+          fi
+          # A lifted cap only reaches players with a release of the mod (docs/versioning.md)
+          gh label create needs-release --color D93F0B --description "Merged changes only reach players with a release" --force
+          gh pr edit "$number" --add-label needs-release
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+      - name: Run the caller's CI on the lift
+        id: ci
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"
+          for _ in $(seq 30); do
+            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event workflow_dispatch --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          [ -n "$run" ] || { echo "the dispatched CI run did not appear" >&2; exit 1; }
+          gh run watch "$run" --exit-status --interval 30 > /dev/null && echo "result=success" >> "$GITHUB_OUTPUT" || echo "result=failure" >> "$GITHUB_OUTPUT"
+      - name: Merge or report
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          NUMBER: ${{ steps.pr.outputs.number }}
+          CI_RESULT: ${{ steps.ci.outputs.result }}
+        run: |
+          if [ "$CI_RESULT" != success ]; then
+            echo "PR #$NUMBER stays open: the caller's CI failed on the lifted caps." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ "$MERGE" != true ]; then
+            echo "PR #$NUMBER is green; merge is off." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if gh pr merge "$NUMBER" --merge --delete-branch; then
+            echo "Merged PR #$NUMBER." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::PR #$NUMBER is green; the base branch's rules need a maintainer to merge it."
+          fi
+      - name: Fail on a release problem
+        env:
+          ISSUES: ${{ needs.check.outputs.issues }}
+        run: |
+          [ "${ISSUES:-0}" -eq 0 ] || { echo "::error::$ISSUES Meitou compatibility problem(s): see the meitou-compat issue."; exit 1; }

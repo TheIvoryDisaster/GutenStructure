@@ -10,3 +10,5 @@ crash.log
 .azure/
 .env
 __pycache__/
+tools/refcheck/bin/
+tools/refcheck/obj/

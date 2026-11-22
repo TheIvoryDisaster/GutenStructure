@@ -14,7 +14,7 @@ Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository 
 
 ## Framework lock
 
-Mod repositories consume framework releases through `meitou.lock.json` and `msbuild/Meitou.Frameworks.targets`: hash-checked downloads, engine and range checks, and a local-clone override. See [framework lock](docs/framework-lock.md). [Framework update](docs/framework-update.md) moves a lock to new framework releases and merges it when the mod's CI passes.
+Mod repositories consume framework releases through `meitou.lock.json` and `msbuild/Meitou.Frameworks.targets`: hash-checked downloads, engine and range checks, and a local-clone override. See [framework lock](docs/framework-lock.md). [Framework update](docs/framework-update.md) moves a lock to new framework releases and merges it when the mod's CI passes. [Versioning](docs/versioning.md) says when a framework bumps its minor version, how dependents set their ranges and `gameVersion`, and what an agent does about a breaking change. The [Meitou compatibility watch](docs/meitou-compat.md) checks each mod daily against the newest Meitou release and nightly, opens an issue on a break, and lifts a `gameVersion` cap when a release breaks nothing.
 
 ## Infrastructure and publishing
 
@@ -47,7 +47,7 @@ Agent instructions: [onboard-repository skill](.agents/skills/onboard-repository
 6. Add tracking issues to `backlog/project.json`; preview then apply **Synchronize Meitou project**. The Projects token is stored in the **Default environment**, not exposed to build jobs.
 7. Enable private Azure artifacts only after the separate broker policy, reader identity, quota checks and reviewed Terraform plan are ready. The current private-artifact audience is **TheIvoryDisaster**.
 
-**Approvals (permanent revision 4):** ordinary branches are unprotected. Beta requires a PR and passing CI, with review-only PR bypass for super-maintainers, including self-merges. Main/release require one independent super-maintainers approval plus CI and no review bypass. GitHub Actions has no review bypass. This applies to all org repos, including Husbandry; native team review replaces CODEOWNERS-dependent approvals and the custom App pilot. See [branch policy](docs/branch-policy.md).
+**Approvals (permanent revision 5):** ordinary branches are unprotected. Beta requires a PR and passing CI, with review-only PR bypass for super-maintainers, including self-merges. Main/release require one independent super-maintainers approval plus CI; the owner's `release-debugger` team may bypass that approval through a PR. GitHub Actions has no review bypass. This applies to all org repos, including Husbandry; native team review replaces CODEOWNERS-dependent approvals and the custom App pilot. See [branch policy](docs/branch-policy.md).
 
 **GutenStructure exception:** `main`, `beta` and `release` require PRs and passing CI with **zero required reviewers** and no mandatory code-owner review. Agents may validate and merge routine changes through conceptually grouped PRs. Changes requiring your personal testing must target `beta` and wait for your feedback before promotion to `main` or `release`. You remain the sole administrator; no co-owner is required.
 
@@ -57,4 +57,4 @@ Organization-wide rulesets require GitHub Team/Enterprise. The free-tier reconci
 
 Dependency consumers: [Rivalry Core CI and promotion handoff](docs/dependency-consumer-ci.md), including the TWR baseline caller, beta bootstrap, approval requirements and deferred lock/trigger work.
 
-**Historical temporary approval policy (superseded by revision 4):** [revision 3](docs/interim-review-policy.md) replaces the older review counts for public org repos except Husbandry with one native super-maintainers approval. Preserve CI/security; Husbandry remains isolated for custom-check testing. Deployment and caller-pin upgrade evidence must be checked before claiming the rollout is complete.
+**Historical temporary approval policy (superseded by revision 5):** [revision 3](docs/interim-review-policy.md) replaces the older review counts for public org repos except Husbandry with one native super-maintainers approval. Preserve CI/security; Husbandry remains isolated for custom-check testing. Deployment and caller-pin upgrade evidence must be checked before claiming the rollout is complete.
