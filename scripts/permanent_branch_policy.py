@@ -2,7 +2,8 @@
 import copy
 from scripts.apply_release_policy import discover_repositories, optional, GitHubFailure
 from scripts.branch_policy import ORG, TEAM, ruleset
-from scripts.interim_review_policy import TEAM_ID, RELEASE_TEAM, RELEASE_TEAM_ID, CUSTOM_CHECKS, review, capability_probe
+from scripts.interim_review_policy import TEAM_ID, CUSTOM_CHECKS, review, capability_probe
+from scripts.release_gate import RELEASE_TEAM, release_bypass
 
 SAFETY = 'Meitou mandatory PR and CI'
 BETA = 'Meitou beta maintainer review'
@@ -12,12 +13,8 @@ BRANCHES = ('beta', 'main', 'release')
 VERSION = 5
 
 
-def release_bypass():
-    """The one bypass main/release allow: the release team skips the approval rule through a PR (CI and the PR stay mandatory)."""
-    return {'actor_type':'Team','actor_id':RELEASE_TEAM_ID,'bypass_mode':'pull_request'}
-
-
-def policies(checks):
+def policies(checks, release_team_id):
+    """The three rulesets; main/release allow one bypass: the release team skips the approval rule through a PR."""
     if not checks:
         raise ValueError('A mandatory CI context is required')
     required=[]
@@ -35,7 +32,7 @@ def policies(checks):
         {'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':False,
           'required_status_checks':required}}]),
         ruleset(BETA,['beta'],[review()], [{'actor_type':'Team','actor_id':TEAM_ID,'bypass_mode':'pull_request'}]),
-        ruleset(STABLE,['main','release'],[review()],[release_bypass()])]
+        ruleset(STABLE,['main','release'],[review()],[release_bypass(release_team_id)])]
 
 
 def validate_policy(actual, wanted):
@@ -56,7 +53,9 @@ def synchronize(api, plan, apply=False):
     members=api(f'orgs/{ORG}/teams/{TEAM}/members?per_page=100')
     if not members or len(members)>=100:raise ValueError('Incomplete team member inventory')
     release_team=api(f'orgs/{ORG}/teams/{RELEASE_TEAM}')
-    if release_team['id']!=RELEASE_TEAM_ID:raise ValueError('Unexpected release bypass team')
+    release_team_id=release_team.get('id')
+    if release_team.get('slug')!=RELEASE_TEAM or not isinstance(release_team_id,int) or release_team_id==TEAM_ID:
+        raise ValueError('Unexpected release bypass team')
     release_members=api(f'orgs/{ORG}/teams/{RELEASE_TEAM}/members?per_page=100')
     if not release_members or len(release_members)>=100:raise ValueError('Incomplete release team member inventory')
     configured={r['repository']:r for r in plan['repositories']}
@@ -73,7 +72,7 @@ def synchronize(api, plan, apply=False):
         assigned=api(f'repos/{repo}/teams?per_page=100')
         if len(assigned)>=100:raise ValueError('Incomplete team assignment inventory')
         writers={t['id'] for t in assigned if t.get('permission') in ('push','maintain','admin')}
-        grants=[slug for slug,tid in ((TEAM,TEAM_ID),(RELEASE_TEAM,RELEASE_TEAM_ID)) if tid not in writers]
+        grants=[slug for slug,tid in ((TEAM,TEAM_ID),(RELEASE_TEAM,release_team_id)) if tid not in writers]
         listing=api(f'repos/{repo}/rulesets?includes_parents=true&per_page=100')
         if len(listing)>=100:raise ValueError('Incomplete ruleset inventory')
         if any(r.get('source_type')=='Organization' for r in listing):
@@ -84,7 +83,7 @@ def synchronize(api, plan, apply=False):
         for rule in [r for rs in existing for r in rs['rules'] if r['type']=='required_status_checks']:
             checks.extend(c for c in rule['parameters']['required_status_checks'] if c['context'] not in CUSTOM_CHECKS)
         if not checks:checks=item['checks']
-        desired=policies(checks)
+        desired=policies(checks,release_team_id)
         operations=[]
         for slug in grants:operations.append(('PUT',f'orgs/{ORG}/teams/{slug}/repos/{repo}',{'permission':'push'}))
         for wanted in desired:
@@ -128,5 +127,5 @@ def synchronize(api, plan, apply=False):
         if error.status not in (403,404):raise
         org_status='Org rules API unavailable; scheduled discovery applies the same policy to new public repositories.'
     return {'policy_version':VERSION,'team':{'id':TEAM_ID,'members':[m['login'] for m in members]},
-            'release_team':{'id':RELEASE_TEAM_ID,'members':[m['login'] for m in release_members]},
+            'release_team':{'slug':RELEASE_TEAM,'id':release_team_id,'members':[m['login'] for m in release_members]},
             'excluded_repositories':[],'organization_policy':org_status,'repositories':report}

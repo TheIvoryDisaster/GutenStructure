@@ -2,7 +2,6 @@
 import copy
 from scripts.apply_release_policy import optional, discover_repositories
 from scripts.branch_policy import ruleset, TEAM, ORG
-from scripts.release_gate import RELEASE_TEAM, RELEASE_TEAM_ID  # noqa: F401  (revision 5 release bypass team)
 
 NAME = 'Interim super-maintainer approval'
 PILOT = ORG + '/Husbandry'
