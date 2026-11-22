@@ -33,7 +33,8 @@ the PR `needs-release`.
   the floor equal.
 - **Cap**: only below a release where a break is **known** (RefCheck or a test found it), e.g. `<0.22.2` once 0.22.2 removed a member the
   mod calls. Never cap below an untested release ahead of time.
-- When a full release is outside a cap and nothing broke, lift the cap to just above that release in a patch release.
+- When a full release is outside a cap and nothing broke, lift the cap to just above that release in a patch release. The
+  [Meitou compatibility watch](meitou-compat.md) opens that PR, and an issue for a break (RefCheck).
 
 ## Engine pin
 
