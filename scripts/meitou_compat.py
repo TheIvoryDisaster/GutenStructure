@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -26,7 +27,8 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.framework_update import format_version, parse_version, satisfies
+from scripts.framework_update import GitHub, format_version, parse_version, satisfies
+from scripts.release_bump import bump
 
 MEITOU = "https://github.com/VlcekM/MeitouClient"
 FULL_TAG = re.compile(r"^v(\d+\.\d+\.\d+)$")
@@ -244,7 +246,8 @@ def checks_table(checks: list[Check]) -> list[str]:
     return rows
 
 
-def write(out: Path, root: Path, mods: list[Mod], checks: list[Check], outcome: dict, newest: Release | None) -> None:
+def write(out: Path, root: Path, mods: list[Mod], checks: list[Check], outcome: dict, newest: Release | None,
+          releases: list[dict] | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     report = {**outcome, "checks": [c.__dict__ for c in checks], "newest": newest.tag if newest else None}
     (out / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -258,10 +261,12 @@ def write(out: Path, root: Path, mods: list[Mod], checks: list[Check], outcome: 
         body += ["", *table, "", "This issue closes itself once the watch passes again."]
         (out / "issue.md").write_text("\n".join(body) + "\n", encoding="utf-8")
     if outcome["lifts"]:
-        write_lift(out, root, mods, outcome["lifts"], newest, table)
+        write_lift(out, root, mods, outcome["lifts"], newest, table, releases or [])
 
 
-def write_lift(out: Path, root: Path, mods: list[Mod], lifts: dict[str, str], newest: Release, table: list[str]) -> None:
+def write_lift(out: Path, root: Path, mods: list[Mod], lifts: dict[str, str], newest: Release, table: list[str],
+               releases: list[dict]) -> None:
+    bumps: list[str] = []
     lines = [f"Meitou {newest.tag} is out and nothing this repository calls is missing from it, so each cap moves to just above it:", ""]
     for mod in (m for m in mods if m.folder in lifts):
         manifest = json.loads(mod.manifest.read_text(encoding="utf-8"))
@@ -270,7 +275,11 @@ def write_lift(out: Path, root: Path, mods: list[Mod], lifts: dict[str, str], ne
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         lines.append(f"- `{mod.folder}` `gameVersion` `{mod.game_version}` → `{lifts[mod.folder]}`")
-    lines += ["", "**Needs a release:** players only get the wider range with a release of each mod (docs/versioning.md).", "", *table]
+        bump(target, releases, bumps)
+    lines += ["", "**Needs a release:** players only get the wider range with a release of each mod (docs/versioning.md)."]
+    if bumps:
+        lines += ["", "Versions bumped so the release carries the change:", "", *bumps]
+    lines += ["", *table]
     (out / "lift.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 # endregion
@@ -318,7 +327,9 @@ def main(argv: list[str] | None = None) -> int:
     outcome = decide(mods, checks, newest, apis, admitted)
     outcome["warnings"] += [text for kind, text in unchecked if kind == "nightly"]
     outcome["issues"] += [text for kind, text in unchecked if kind != "nightly"]
-    write(args.out, root, mods, checks, outcome, newest)
+    repository = os.environ.get("GITHUB_REPOSITORY")
+    releases = GitHub(os.environ.get("GITHUB_TOKEN")).releases(repository) if outcome["lifts"] and repository else []
+    write(args.out, root, mods, checks, outcome, newest, releases)
     print("\n".join(checks_table(checks)))
     return 1 if outcome["issues"] else 0
 

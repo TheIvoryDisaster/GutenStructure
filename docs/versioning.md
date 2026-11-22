@@ -27,6 +27,17 @@ as few players' mods as possible. Meitou ships nightlies daily, so these rules a
 needs a release of every dependent with the widened range: [framework-update](framework-update.md) widens it in the repository and labels
 the PR `needs-release`.
 
+## Automatic patch bumps
+
+A widened dependency range or a lifted `gameVersion` cap reaches players only with a release, so the PR that makes it (framework-update or
+the Meitou compatibility watch) also bumps the mod's version where needed (`scripts/release_bump.py`):
+
+- the manifest's version already has a production release (a non-prerelease GitHub release holding `<Folder>-<version>.zip`): it moves to
+  the next patch;
+- otherwise the unreleased version already carries the change and stays.
+
+The release itself (promotion to `main` and `release`, the tag) still needs a super-maintainer.
+
 ## `gameVersion`
 
 - **Floor**: the oldest Meitou release the mod is built and stamped for. Keep `Directory.Build.rsp` (`-p:AssemblyVersion=<floor>.0`) and

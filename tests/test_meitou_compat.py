@@ -86,6 +86,19 @@ class MeitouCompatTests(unittest.TestCase):
             self.assertIn("Needs a release", (out / "lift.md").read_text())
             self.assertFalse((out / "issue.md").exists())
 
+    def test_the_lift_bumps_a_released_version(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "repo"
+            (root / "Mod").mkdir(parents=True)
+            (root / "Mod" / "meitou.json").write_text(json.dumps({"id": "x.mod", "version": "1.0.0", "gameVersion": ">=0.22.0 <0.22.1"}))
+            mods = [Mod("Mod", root / "Mod" / "meitou.json", ">=0.22.0 <0.22.1")]
+            out = Path(temp) / "out"
+            releases = [{"assets": [{"name": "Mod-1.0.0.zip"}]}]
+            write(out, root, mods, [], {"issues": [], "warnings": [], "lifts": {"Mod": ">=0.22.0 <0.22.2"}}, self.full[-1], releases)
+            self.assertEqual(json.loads((out / "lift" / "Mod" / "meitou.json").read_text())["version"], "1.0.1")
+            self.assertEqual(json.loads((root / "Mod" / "meitou.json").read_text())["version"], "1.0.0")
+            self.assertIn("1.0.1", (out / "lift.md").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

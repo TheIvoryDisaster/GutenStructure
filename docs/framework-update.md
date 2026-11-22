@@ -26,6 +26,7 @@ jobs:
     uses: TheIvoryDisaster/GutenStructure/.github/workflows/framework-update.yml@<GutenStructure commit>
     with:
       channel: beta
+      tools-ref: <the same GutenStructure commit>
 ```
 
 - `channel: beta` for every dependent: each framework beta merge publishes an immutable snapshot, so a dependent's tests run against it
@@ -35,7 +36,8 @@ jobs:
 
 - The CI workflow (`ci-workflow`, default `ci.yml`) must accept `workflow_dispatch`: a PR opened by the workflow's token starts no
   workflows, so the update dispatches CI on its branch, and the checks land on the PR's commit.
-- `build/gutenstructure` must be pinned to a GutenStructure commit that has `scripts/framework_update.py`.
+- `tools-ref` (the same commit as the `uses:` pin) runs the update script from that GutenStructure commit. Without it the script comes from
+  `build/gutenstructure`, which must then be pinned to a commit that has `scripts/framework_update.py`.
 - Repository settings > Actions > General: "Allow GitHub Actions to create and approve pull requests".
 
 ## What a run does
@@ -46,7 +48,8 @@ jobs:
    locked frameworks must then name one engine commit, else the run fails.
 3. With `widen-ranges` (default on), a mod whose `dependencies` range excludes the new version gets its upper bound raised to the next breaking
    version (`<0.7.0` to `<0.8.0` for 0.7.x; `<2.0.0` to `<3.0.0` for 2.x). The PR is then labelled `needs-release`: players' installed
-   copies keep the old range until the mod is released ([versioning](versioning.md)).
+   copies keep the old range until the mod is released, so a widened mod whose version is already released moves to the next patch
+   ([versioning](versioning.md), "Automatic patch bumps").
 4. Moves `engine` to that commit, builds and tests `test-project` with the strict engine check.
 5. Commits the lock, the widened manifests and the engine pointer to `framework-update/<channel>`, opens or updates one PR into `base`,
    dispatches CI on it and waits.
