@@ -95,6 +95,8 @@ jobs:
           status=$?
           set -e
           [ "$status" -le 1 ] || exit "$status"
+          mkdir -p "$out"
+          [ -f "$out/report.json" ] || echo '{"issues": [], "warnings": [], "lifts": {}, "checks": [], "newest": null}' > "$out/report.json"
           rm -rf "${out:?}/build"
           echo "issues=$(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))["issues"]))' "$out/report.json")" >> "$GITHUB_OUTPUT"
           for f in issue.md lift.md; do [ -f "$out/$f" ] && cat "$out/$f" >> "$GITHUB_STEP_SUMMARY"; done

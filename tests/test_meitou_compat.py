@@ -63,6 +63,12 @@ class MeitouCompatTests(unittest.TestCase):
         self.assertEqual(result["issues"], [])
         self.assertEqual(len(result["warnings"]), 1)
 
+    def test_a_floor_above_the_newest_release_is_only_a_warning(self):
+        mods = [Mod("Mod", Path("Mod/meitou.json"), ">=0.22.2 <0.23.0")]
+        result = decide(mods, [Check("v0.22.1", "release", "Mod/Mod.dll", [], [])], self.full[-1], {}, {"Mod": None})
+        self.assertEqual(result["issues"], [])
+        self.assertIn("loads only in nightlies", result["warnings"][0])
+
     def test_a_newer_engine_stamp_than_the_floor_is_an_issue(self):
         mods = [Mod("Mod", Path("Mod/meitou.json"), ">=0.21.0 <0.22.2")]
         checks = [Check("v0.21.0", "floor", "Mod/Mod.dll", [], ["MeitouClient 0.22.0.0 > 0.21.0.0"])]
