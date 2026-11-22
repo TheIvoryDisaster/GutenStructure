@@ -1,4 +1,4 @@
-> Retired experiment. Permanent native revision 4 applies to all organization repos, including Husbandry. See [branch-policy.md](branch-policy.md). The App service/pilot described below is not required and its active pilot workflows have been removed.
+> Retired experiment. Permanent native revision 5 applies to all organization repos, including Husbandry. See [branch-policy.md](branch-policy.md). The App service/pilot described below is not required and its active pilot workflows have been removed.
 
 # Owner-author approval policy (staged, not enforced)
 
