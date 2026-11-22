@@ -2,7 +2,7 @@
 
 [framework-update.yml](../.github/workflows/framework-update.yml) keeps a mod repository's [framework lock](framework-lock.md) on the newest
 published releases. When a framework (Rivalry Core, Logistics Core, ...) publishes a release, the next run moves `meitou.lock.json` to it,
-builds and tests the mod, and opens a PR into `beta`. Under permanent revision 4, a super-maintainer reviews/merges it after CI passes. A PR that fails stays open as the regression
+builds and tests the mod, and opens a PR into `beta`. Under permanent revision 5, a super-maintainer reviews/merges it after CI passes. A PR that fails stays open as the regression
 report. It polls releases on a schedule, so no framework repository needs a token for its dependents.
 
 ## Use it

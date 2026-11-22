@@ -1,4 +1,4 @@
-> Historical revision 3. Superseded by [permanent revision 4](branch-policy.md), including Husbandry and beta review-only bypass.
+> Historical revision 3. Superseded by [permanent revision 5](branch-policy.md), including Husbandry and beta review-only bypass.
 
 # Interim native team approval
 

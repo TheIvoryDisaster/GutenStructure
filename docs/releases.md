@@ -1,6 +1,6 @@
 # Release promotion
 
-The permanent [branch policy](branch-policy.md) applies to all organization repos, including Husbandry: beta requires PR+CI with super-maintainers review-only bypass; main/release require PR+CI and one independent super-maintainers approval. Ordinary branches remain unprotected. CODEOWNERS is ownership documentation, not an additional approval gate. No custom App or GitHub Actions review bypass is needed.
+The permanent [branch policy](branch-policy.md) applies to all organization repos, including Husbandry: beta requires PR+CI with super-maintainers review-only bypass; main/release require PR+CI and one independent super-maintainers approval, which the owner's `release-debugger` team may bypass through a PR. Ordinary branches remain unprotected. CODEOWNERS is ownership documentation, not an additional approval gate. No custom App or GitHub Actions review bypass is needed.
 
 Promote tested work beta → main → release through PRs. Keep MeitouClient master as its upstream mirror and fork as its development branch. Do not rename existing branches just to apply policy. Missing branches/workflows need reviewed bootstrap commits. A passing engine-free CI run does not replace licensed-data/in-game testing or prove a complete production package.
 
