@@ -9,8 +9,10 @@
 # Channels:
 # - beta: prerelease <slug>-<version>-beta.<commit> (one per run, never moved) and rolling prerelease <slug>-beta whose asset is
 #   always <mod-folder>-beta.zip. Neither tag matches <slug>-v*, so tag-triggered production workflows never fire for them.
-# - release: release <slug>-v<version> for the pushed tag; the tag must equal that name. Production callers put the central
-#   release-gate.yml job in front; the publisher also rechecks the protected release head immediately before writing.
+# - release: release <slug>-v<version>. On a push to release the publisher creates that tag at the release head, in the same run
+#   (a tag made with GITHUB_TOKEN starts no other workflow); when the tag already exists the run skips building and publishing,
+#   so a promotion without a version bump releases nothing. A pushed tag (manual fallback) must equal that name. Production
+#   callers put the central release-gate.yml job in front; the publisher also rechecks the protected release head before writing.
 name: Package Meitou mod
 
 on:
@@ -43,6 +45,9 @@ on:
       tag:
         description: The versioned tag published (snapshot tag on beta).
         value: ${{ jobs.package.outputs.tag }}
+      skipped:
+        description: "'true' when a push to release found the version's tag already there and published nothing."
+        value: ${{ jobs.package.outputs.skipped }}
       sha256:
         description: SHA-256 of the published zip.
         value: ${{ jobs.package.outputs.sha256 }}
@@ -59,6 +64,7 @@ jobs:
     outputs:
       tag: ${{ steps.name.outputs.tag }}
       label: ${{ steps.name.outputs.label }}
+      skipped: ${{ steps.name.outputs.skipped }}
       sha256: ${{ steps.pack.outputs.sha256 }}
     steps:
       - name: Validate inputs
@@ -91,13 +97,22 @@ jobs:
           MOD_FOLDER: ${{ inputs.mod-folder }}
           SLUG: ${{ inputs.slug }}
           CHANNEL: ${{ inputs.channel }}
+          GH_TOKEN: ${{ github.token }}
         run: |
+          skipped=false
           version=$(jq -er .version "$MOD_FOLDER/meitou.json")
           [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]] || { echo "meitou.json version '$version' is not SemVer" >&2; exit 1; }
           if [ "$CHANNEL" = release ]; then
             label="$version"
             tag="$SLUG-v$version"
-            [ "$GITHUB_REF" = "refs/tags/$tag" ] || { echo "release runs only for tag $tag (got $GITHUB_REF)" >&2; exit 1; }
+            if [ "$GITHUB_REF" = refs/heads/release ]; then
+              if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --silent 2>/dev/null; then
+                echo "::notice::$tag already exists, so $version is already released; nothing to publish. Bump $MOD_FOLDER/meitou.json to release."
+                skipped=true
+              fi
+            else
+              [ "$GITHUB_REF" = "refs/tags/$tag" ] || { echo "release runs only on release or for tag $tag (got $GITHUB_REF)" >&2; exit 1; }
+            fi
           else
             label="$version-beta.$(git rev-parse --short=7 HEAD)"
             tag="$SLUG-$label"
@@ -105,14 +120,16 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "label=$label" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
 
       - name: Test
-        if: inputs.test-project != ''
+        if: steps.name.outputs.skipped != 'true' && inputs.test-project != ''
         env:
           TEST_PROJECT: ${{ inputs.test-project }}
         run: dotnet test "$TEST_PROJECT" -c Release
 
       - name: Pack
+        if: steps.name.outputs.skipped != 'true'
         id: pack
         env:
           MOD_FOLDER: ${{ inputs.mod-folder }}
@@ -145,6 +162,7 @@ jobs:
           echo "sha256=$sha" >> "$GITHUB_OUTPUT"
 
       - name: Notes
+        if: steps.name.outputs.skipped != 'true'
         env:
           MOD_FOLDER: ${{ inputs.mod-folder }}
           VERSION: ${{ steps.name.outputs.version }}
@@ -171,6 +189,7 @@ jobs:
           cat dist/notes.md
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.name.outputs.skipped != 'true'
         with:
           name: mod-package
           path: dist/
@@ -179,6 +198,7 @@ jobs:
 
   publish:
     needs: package
+    if: needs.package.outputs.skipped != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -211,7 +231,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: TheIvoryDisaster/GutenStructure
-          ref: 180a21bace155a263bb57e9932930af528b6758e
+          ref: 96b85786d430b9c19fba9ea1b709e797fe9a66ae
           path: _publisher
           persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
