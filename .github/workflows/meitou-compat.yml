@@ -73,7 +73,7 @@ jobs:
         with:
           repository: TheIvoryDisaster/GutenStructure
           ref: ${{ inputs.tools-ref }}
-          path: ${{ runner.temp }}/gutenstructure
+          path: _gutenstructure
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -82,7 +82,7 @@ jobs:
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
       - name: Build RefCheck
-        run: dotnet build "$RUNNER_TEMP/gutenstructure/tools/refcheck/RefCheck.csproj" -c Release -o "$RUNNER_TEMP/refcheck" -nologo -v q
+        run: dotnet build "$GITHUB_WORKSPACE/_gutenstructure/tools/refcheck/RefCheck.csproj" -c Release -o "$RUNNER_TEMP/refcheck" -nologo -v q
       - name: Check the mods against Meitou
         id: watch
         env:
@@ -90,7 +90,7 @@ jobs:
         run: |
           out="$RUNNER_TEMP/compat"
           set +e
-          python3 -I "$RUNNER_TEMP/gutenstructure/scripts/meitou_compat.py" --root . --refcheck "$RUNNER_TEMP/refcheck/RefCheck.dll" \
+          python3 -I "$GITHUB_WORKSPACE/_gutenstructure/scripts/meitou_compat.py" --root . --refcheck "$RUNNER_TEMP/refcheck/RefCheck.dll" \
             --out "$out" --cache "$RUNNER_TEMP/meitou-releases"
           status=$?
           set -e
