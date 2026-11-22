@@ -39,7 +39,8 @@ Inputs: `base` (default `beta`; a repository without one passes `main`), `ci-wor
 - RefCheck reports two kinds of break. A **missing member** is a method, constructor or field the DLL references by name and parameter types
   that the release lacks. A **newer stamp** is an engine assembly the DLL references at a higher version than the release's, which the game
   refuses.
-- Checks that the newest full release is inside each `gameVersion`.
+- Checks that the newest full release is inside each `gameVersion`. A mod whose floor is above it (built for a Meitou only nightlies have
+  yet) is a warning, and a release below a mod's floor isn't checked for that mod.
 - Reads each release's code-mod API version (`Meitou.Modding.ModApi.Version`).
 
 ## What it does

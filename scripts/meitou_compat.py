@@ -159,9 +159,10 @@ def framework_assemblies(root: Path) -> list[tuple[str, Path, str]]:
 
 
 def assemblies(mods: list[Mod], frameworks: list[tuple[str, Path, str]], release: Release) -> list[tuple[str, Path]]:
-    """What to check against a release: every mod assembly, and each framework assembly whose own gameVersion admits the release (one
-    it refuses never loads beside the mod, and its own repository's watch reports it)."""
-    mine = [(f"{m.folder}/{a.name}", a) for m in mods for a in m.assemblies]
+    """What to check against a release: each mod assembly unless the release is below the mod's floor (still checked above its cap, which
+    a lift needs), and each framework assembly whose own gameVersion admits the release (one it refuses never loads beside the mod, and its
+    own repository's watch reports it)."""
+    mine = [(f"{m.folder}/{a.name}", a) for m in mods if not below_floor(m.game_version, release) for a in m.assemblies]
     return mine + [(label, path) for label, path, range_text in frameworks if satisfies(range_text, release.version)]
 
 # endregion
@@ -197,6 +198,12 @@ def lifted(range_text: str, release: Release) -> str | None:
     return widened if satisfies(widened, release.version) else None
 
 
+def below_floor(range_text: str, release: Release) -> bool:
+    """Whether the range's lower bound excludes the release: a mod built for a Meitou that has no full release yet."""
+    floor = " ".join(LOWER_BOUND.findall(range_text))
+    return bool(floor) and not satisfies(floor, release.version)
+
+
 def decide(mods: list[Mod], checks: list[Check], newest: Release | None, apis: dict[str, int], admitted: dict[str, str | None]) -> dict:
     """What needs a person (issues) and which caps can move (lifts), from the checks; no I/O."""
     issues = [f"`{c.assembly}` against {c.target}: " + "; ".join([*(f"missing `{m}`" for m in c.missing), *(f"engine stamp {s}" for s in c.stamps)])
@@ -208,6 +215,10 @@ def decide(mods: list[Mod], checks: list[Check], newest: Release | None, apis: d
         newest_clean = all(c.ok for c in checks if c.target == newest.tag)
         for mod in mods:
             if satisfies(mod.game_version, newest.version):
+                continue
+            if below_floor(mod.game_version, newest):
+                warnings.append(f"`{mod.folder}` `gameVersion` `{mod.game_version}` starts above {newest.tag}, the newest full release: it "
+                                "loads only in nightlies until that Meitou ships")
                 continue
             widened = lifted(mod.game_version, newest)
             below = admitted.get(mod.folder)
@@ -277,8 +288,8 @@ def main(argv: list[str] | None = None) -> int:
     root = args.root.resolve()
     mods = find_mods(root)
     if not mods:
-        print("no mods found", file=sys.stderr)
-        return 2
+        print("no mods (a top-level folder with meitou.json and <Folder>/<Folder>.csproj): nothing to check")
+        return 0
     for mod in mods:
         build(root, mod, args.out)
     frameworks = framework_assemblies(root)
