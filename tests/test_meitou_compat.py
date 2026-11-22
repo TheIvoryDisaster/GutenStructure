@@ -23,6 +23,9 @@ class MeitouCompatTests(unittest.TestCase):
         self.assertEqual([(kind, r.tag) for kind, r in chosen],
                          [("release", "v0.22.1"), ("nightly", "v0.22.2-nightly.20261122"), ("floor", "v0.21.0"), ("floor", "v0.22.0")])
 
+    def test_a_range_without_a_floor_has_no_floor_check(self):
+        self.assertEqual([kind for kind, _ in targets(self.full, self.nightly, ["", "<0.23.0"])], ["release", "nightly"])
+
     def test_a_nightly_older_than_the_newest_release_is_not_checked(self):
         full, nightly = parse_tags(["v0.22.1", "v0.22.1-nightly.20261101"])
         self.assertEqual([kind for kind, _ in targets(full, nightly, [])], ["release"])

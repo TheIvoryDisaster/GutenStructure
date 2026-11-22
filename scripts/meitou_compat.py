@@ -32,6 +32,7 @@ MEITOU = "https://github.com/VlcekM/MeitouClient"
 FULL_TAG = re.compile(r"^v(\d+\.\d+\.\d+)$")
 NIGHTLY_TAG = re.compile(r"^v(\d+\.\d+\.\d+)-nightly\.(\d{8})(?:\.(\d+))?$")
 UPPER_BOUND = re.compile(r"<\s*(\d+\.\d+\.\d+)")
+LOWER_BOUND = re.compile(r">=?\s*\d+\.\d+\.\d+")
 
 
 @dataclass(frozen=True)
@@ -88,13 +89,13 @@ def remote_tags(url: str) -> list[str]:
 
 
 def targets(full: list[Release], nightly: list[Release], ranges: list[str]) -> list[tuple[str, Release]]:
-    """(kind, release) to check: the newest full release, a newer nightly, and each range's oldest admitted release."""
+    """(kind, release) to check: the newest full release, a newer nightly, and the oldest release each range with a floor admits."""
     chosen: list[tuple[str, Release]] = []
     if full:
         chosen.append(("release", full[-1]))
     if nightly and (not full or nightly[-1].version > full[-1].version):
         chosen.append(("nightly", nightly[-1]))
-    for range_text in ranges:
+    for range_text in (r for r in ranges if LOWER_BOUND.search(r)):
         floor = next((r for r in full if satisfies(range_text, r.version)), None)
         if floor is not None and all(floor.tag != r.tag for _, r in chosen):
             chosen.append(("floor", floor))
@@ -119,6 +120,8 @@ def download(release: Release, cache: Path) -> Path:
             if base.endswith(".dll") and (base.startswith("Meitou") or base == "0Harmony.dll"):
                 (folder / base).write_bytes(zipped.read(name))
     archive.unlink()
+    if not any(folder.glob("Meitou*.dll")):
+        raise ValueError(f"no Meitou*.dll in {release.tag}'s win-x64 zip")
     return folder
 
 # endregion
@@ -175,9 +178,10 @@ def refcheck(tool: Path, assembly: Path, release_dir: Path) -> tuple[list[str], 
             [l.removeprefix("STAMP ") for l in lines if l.startswith("STAMP ")])
 
 
-def api_version(tool: Path, release_dir: Path) -> int:
-    result = subprocess.run(["dotnet", str(tool), "api", str(release_dir)], check=True, capture_output=True, text=True)
-    return int(result.stdout.strip())
+def api_version(tool: Path, release_dir: Path) -> int | None:
+    """The release's code-mod API version, or None when RefCheck can't read it."""
+    result = subprocess.run(["dotnet", str(tool), "api", str(release_dir)], capture_output=True, text=True)
+    return int(result.stdout.strip()) if result.returncode == 0 else None
 
 
 def next_patch(version: tuple[int, int, int]) -> tuple[int, int, int]:
@@ -207,7 +211,7 @@ def decide(mods: list[Mod], checks: list[Check], newest: Release | None, apis: d
                 continue
             widened = lifted(mod.game_version, newest)
             below = admitted.get(mod.folder)
-            same_api = below is not None and apis.get(below) == apis.get(newest.tag)
+            same_api = below is not None and apis.get(below) is not None and apis.get(below) == apis.get(newest.tag)
             if widened and newest_clean and same_api:
                 lifts[mod.folder] = widened
                 continue
@@ -286,9 +290,13 @@ def main(argv: list[str] | None = None) -> int:
     for tag in {t for t in admitted.values() if t} - {r.tag for _, r in chosen}:
         chosen.append(("admitted", next(r for r in full if r.tag == tag)))
 
-    checks, apis = [], {}
+    checks, apis, unchecked = [], {}, []
     for kind, release in chosen:
-        folder = download(release, args.cache)
+        try:
+            folder = download(release, args.cache)
+        except (OSError, ValueError, zipfile.BadZipFile) as error:
+            unchecked.append((kind, f"couldn't check {release.tag}: {error}"))
+            continue
         apis[release.tag] = api_version(args.refcheck, folder)
         if kind == "admitted":
             continue
@@ -297,6 +305,8 @@ def main(argv: list[str] | None = None) -> int:
             checks.append(Check(release.tag, kind, label, missing, stamps))
 
     outcome = decide(mods, checks, newest, apis, admitted)
+    outcome["warnings"] += [text for kind, text in unchecked if kind == "nightly"]
+    outcome["issues"] += [text for kind, text in unchecked if kind != "nightly"]
     write(args.out, root, mods, checks, outcome, newest)
     print("\n".join(checks_table(checks)))
     return 1 if outcome["issues"] else 0

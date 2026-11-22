@@ -46,7 +46,7 @@ static int Api(string release)
 {
     using var mlc = Context(release);
     string client = Path.Combine(release, "MeitouClient.dll");
-    var modApi = mlc.LoadFromAssemblyPath(client).GetType("Meitou.Modding.ModApi");
+    var modApi = File.Exists(client) ? mlc.LoadFromAssemblyPath(client).GetType("Meitou.Modding.ModApi") : null;
     var version = modApi?.GetField("Version")?.GetRawConstantValue();
 
     if (version is null)
