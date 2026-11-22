@@ -2,9 +2,7 @@ import copy
 import unittest
 from unittest.mock import patch
 from scripts.permanent_branch_policy import policies as build,validate_policy,synchronize,SAFETY,BETA,STABLE
-from scripts.release_gate import release_bypass as bypass_for, release_team_id
-
-RELEASE_TEAM_ID=31415926
+from scripts.release_gate import release_bypass as bypass_for, RELEASE_TEAM_ID
 def policies(checks):return build(checks,RELEASE_TEAM_ID)
 def release_bypass():return bypass_for(RELEASE_TEAM_ID)
 
@@ -72,20 +70,17 @@ class PermanentPolicyTests(unittest.TestCase):
                     [{'actor_type':'OrganizationAdmin','actor_id':1,'bypass_mode':'pull_request'}]):
             detail['bypass_actors']=bad
             with self.assertRaises(RuntimeError):validate_rules([r],lambda _:detail,repository=repo,release_team=RELEASE_TEAM_ID)
-        detail['bypass_actors']=[release_bypass()]
-        with self.assertRaises(RuntimeError):validate_rules([r],lambda _:detail,repository=repo)   # the team's ID could not be read
+        detail['bypass_actors']=[bypass_for(7)]   # a team that merely took the slug
+        with self.assertRaises(RuntimeError):validate_rules([r],lambda _:detail,repository=repo)
         detail.update(bypass_actors=[release_bypass()],current_user_can_bypass='pull_requests_only')   # the gate's own token
         with self.assertRaises(RuntimeError):validate_rules([r],lambda _:detail,repository=repo,release_team=RELEASE_TEAM_ID)
         other={'name':'Some other ruleset','enforcement':'active','bypass_actors':[release_bypass()]}
         with self.assertRaises(RuntimeError):validate_rules([r],lambda _:other,repository=repo,release_team=RELEASE_TEAM_ID)
-    def test_release_team_is_found_by_slug_or_not_at_all(self):
-        self.assertEqual(release_team_id(lambda _:{'id':7,'slug':'release-debugger'}),7)
-        self.assertIsNone(release_team_id(lambda _:{'id':7,'slug':'renamed'}))
-        def denied(_):raise RuntimeError('HTTP 403')
-        self.assertIsNone(release_team_id(denied))
-    def test_reconciliation_refuses_a_release_team_that_is_super_maintainers(self):
+    def test_release_team_is_pinned_by_id(self):
+        self.assertEqual(RELEASE_TEAM_ID,20828147)
+    def test_reconciliation_refuses_a_release_team_with_another_id(self):
         def api(path,method='GET',body=None):
             if '/members?' in path:return [{'login':'maintainer'}]
-            if path.endswith('/teams/release-debugger'):return {'id':20738063,'slug':'release-debugger'}
+            if path.endswith('/teams/release-debugger'):return {'id':7,'slug':'release-debugger'}
             return {'id':20738063}
         with self.assertRaises(ValueError):synchronize(api,{'policy_version':5,'release_bypass_team':'release-debugger','repositories':[]})
