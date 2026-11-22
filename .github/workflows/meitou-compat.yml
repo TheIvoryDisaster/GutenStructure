@@ -87,6 +87,7 @@ jobs:
         id: watch
         env:
           MeitouFrameworksStrict: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           out="$RUNNER_TEMP/compat"
           set +e

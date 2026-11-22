@@ -52,6 +52,7 @@ Inputs: `base` (default `beta`; a repository without one passes `main`), `ci-wor
   (`<0.22.2` to `<0.22.3` for 0.22.2). It does so when:
   - nothing is missing from that release;
   - its code-mod API version matches the newest release the range already admits.
+  A lifted mod whose version is already released moves to the next patch ([versioning](versioning.md), "Automatic patch bumps").
   The watch then commits the manifests to `meitou-compat/cap-lift`, opens `Meitou: Admit <tag>` labelled `needs-release` and dispatches
   the caller's CI. It merges when CI is green and the branch rules allow, like [framework-update](framework-update.md).
 - Where the code-mod API changed, the issue asks for a play test and a manual lift instead. RefCheck can't see behaviour: 0.22.2 made

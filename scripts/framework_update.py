@@ -18,6 +18,11 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from scripts.release_bump import bump  # noqa: E402
+
 API = "https://api.github.com"
 RELEASE_TAG = re.compile(r"^(?P<slug>.+)-v(?P<version>\d+\.\d+\.\d+)$")
 BETA_TAG = re.compile(r"^(?P<slug>.+)-(?P<version>\d+\.\d+\.\d+)-beta\.(?P<commit>[0-9a-f]{7,40})$")
@@ -201,7 +206,11 @@ def update_entry(entry: dict, github: GitHub, channel: str, notes: list[str]) ->
     return candidate
 
 
-def widen_manifests(root: Path, versions: dict[str, tuple[int, int, int]], notes: list[str]) -> None:
+def widen_manifests(root: Path, versions: dict[str, tuple[int, int, int]], notes: list[str]) -> list[Path]:
+    """
+    Raises each mod's dependency ranges to admit the new versions; returns the manifests changed.
+    """
+    changed_paths = []
     for manifest_path in sorted(root.glob("*/meitou.json")):
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         changed = False
@@ -215,6 +224,8 @@ def widen_manifests(root: Path, versions: dict[str, tuple[int, int, int]], notes
             changed = True
         if changed:
             manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            changed_paths.append(manifest_path)
+    return changed_paths
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -242,14 +253,22 @@ def main(argv: list[str] | None = None) -> int:
     lock_path.write_text(json.dumps(lock, indent=2) + "\n", encoding="utf-8")
 
     manifest_notes: list[str] = []
+    bump_notes: list[str] = []
     if args.widen_ranges:
-        widen_manifests(root, {framework: candidate.version for framework, candidate in moved.items()}, manifest_notes)
+        widened = widen_manifests(root, {framework: candidate.version for framework, candidate in moved.items()}, manifest_notes)
+        repository = os.environ.get("GITHUB_REPOSITORY")
+        if widened and repository:
+            releases = github.releases(repository)
+            for manifest_path in widened:
+                bump(manifest_path, releases, bump_notes)
 
     summary = ["Moves `meitou.lock.json` to the newest published framework releases.", "", *notes]
     if manifest_notes:
         summary += ["", "Dependency ranges widened so the new versions are accepted (the tests decide):", "", *manifest_notes]
         summary += ["", "**Needs a release:** players' installed copies still carry the old range, and the loader refuses a mod whose dependency "
                     "is out of range, optional ones too (docs/versioning.md)."]
+    if bump_notes:
+        summary += ["", "Versions bumped so the release carries the change:", "", *bump_notes]
     Path(args.summary).write_text("\n".join(summary) + "\n", encoding="utf-8")
     print(engines.pop())
     return 0

@@ -1,7 +1,7 @@
 # Reusable: moves the caller's meitou.lock.json to the newest published framework releases and proposes it as a PR (docs/framework-update.md).
 #
-# - check (read-only token, no persisted credentials): runs build/gutenstructure/scripts/framework_update.py from the caller's GutenStructure
-#   submodule, moves the engine submodule to the releases' engine commit, then builds and tests the caller with the new lock (strict engine
+# - check (read-only token, no persisted credentials): runs scripts/framework_update.py from GutenStructure at tools-ref (or, without it, from
+#   the caller's build/gutenstructure submodule), moves the engine submodule to the releases' engine commit, then builds and tests the caller with the new lock (strict engine
 #   check). Uploads the changed files and the result. Nothing is written to the repository here.
 # - propose (contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): commits those files
 #   to framework-update/<channel>, opens or updates the PR into the base branch, dispatches the caller's CI on it (a PR opened with
@@ -36,6 +36,10 @@ on:
         description: Merge the PR once the caller's CI is green.
         type: boolean
         default: true
+      tools-ref:
+        description: The GutenStructure ref the update script comes from; pin it to the same commit as this workflow. Empty uses build/gutenstructure.
+        type: string
+        default: ''
       dotnet-version:
         type: string
         default: 11.0.x
@@ -70,7 +74,9 @@ jobs:
           BASE: ${{ inputs.base }}
           CI_WORKFLOW: ${{ inputs.ci-workflow }}
           TEST_PROJECT: ${{ inputs.test-project }}
+          TOOLS_REF: ${{ inputs.tools-ref }}
         run: |
+          [[ -z "$TOOLS_REF" || "$TOOLS_REF" =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "invalid tools-ref" >&2; exit 1; }
           case "$CHANNEL" in release|beta) ;; *) echo "channel must be release or beta" >&2; exit 1 ;; esac
           [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ ]] || { echo "invalid base or ci-workflow" >&2; exit 1; }
           [[ "$TEST_PROJECT" != -* ]] || { echo "test-project cannot be an option" >&2; exit 1; }
@@ -78,6 +84,13 @@ jobs:
         with:
           ref: ${{ inputs.base }}
           submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        if: inputs.tools-ref != ''
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: ${{ inputs.tools-ref }}
+          path: _gutenstructure
           persist-credentials: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
@@ -88,8 +101,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           CHANNEL: ${{ inputs.channel }}
           WIDEN: ${{ inputs.widen-ranges }}
+          TOOLS_REF: ${{ inputs.tools-ref }}
         run: |
           script=build/gutenstructure/scripts/framework_update.py
+          [ -z "$TOOLS_REF" ] || script=_gutenstructure/scripts/framework_update.py
           test -f "$script" || { echo "$script missing: pin build/gutenstructure to a GutenStructure commit that has it" >&2; exit 1; }
           widen=(); [ "$WIDEN" = true ] && widen=(--widen-ranges)
           engine=$(python3 -I "$script" --channel "$CHANNEL" "${widen[@]}" --summary "$RUNNER_TEMP/framework-update.md")
