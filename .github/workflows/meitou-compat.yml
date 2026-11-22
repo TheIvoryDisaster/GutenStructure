@@ -140,8 +140,9 @@ jobs:
           issues=$(python3 -c 'import json,sys;print(len(json.load(open(sys.argv[1]))["issues"]))' "$compat/report.json")
           if [ "$issues" -gt 0 ]; then title="Meitou compatibility: $issues problem(s)"; nightly=false; else title="Meitou nightly: a coming release breaks this repository"; nightly=true; fi
           if [ -z "$number" ]; then
-            gh issue create --title "$title" --body-file "$compat/issue.md" --label meitou-compat
-            number=$(gh issue list --label meitou-compat --state open --json number --jq '.[0].number')
+            # The search behind gh issue list lags a new issue: take the number from the URL gh issue create prints.
+            url=$(gh issue create --title "$title" --body-file "$compat/issue.md" --label meitou-compat)
+            number="${url##*/}"
           else
             gh issue edit "$number" --title "$title" --body-file "$compat/issue.md"
           fi
@@ -183,8 +184,8 @@ jobs:
           title="Meitou: Admit $newest"
           number=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number // empty')
           if [ -z "$number" ]; then
-            gh pr create --head "$BRANCH" --base "$BASE" --title "$title" --body-file "$body"
-            number=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+            url=$(gh pr create --head "$BRANCH" --base "$BASE" --title "$title" --body-file "$body")
+            number="${url##*/}"
           else
             gh pr edit "$number" --title "$title" --body-file "$body"
           fi
