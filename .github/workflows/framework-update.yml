@@ -197,6 +197,11 @@ jobs:
             gh pr edit "$number" --body-file "$body"
           fi
           echo "number=$number" >> "$GITHUB_OUTPUT"
+          # A widened range only reaches players with a release of the mod (docs/versioning.md)
+          if grep -q '/meitou.json$' "$RUNNER_TEMP/update/paths.txt"; then
+            gh label create needs-release --color D93F0B --description "Merged changes only reach players with a release" --force
+            gh pr edit "$number" --add-label needs-release
+          fi
       - name: Run the caller's CI on the update
         if: steps.commit.outputs.pushed == 'true'
         id: ci

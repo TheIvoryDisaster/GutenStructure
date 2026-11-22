@@ -248,6 +248,8 @@ def main(argv: list[str] | None = None) -> int:
     summary = ["Moves `meitou.lock.json` to the newest published framework releases.", "", *notes]
     if manifest_notes:
         summary += ["", "Dependency ranges widened so the new versions are accepted (the tests decide):", "", *manifest_notes]
+        summary += ["", "**Needs a release:** players' installed copies still carry the old range, and the loader refuses a mod whose dependency "
+                    "is out of range, optional ones too (docs/versioning.md)."]
     Path(args.summary).write_text("\n".join(summary) + "\n", encoding="utf-8")
     print(engines.pop())
     return 0
