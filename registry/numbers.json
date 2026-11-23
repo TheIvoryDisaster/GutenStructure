@@ -1,0 +1,14 @@
+{
+  "pools": ["task type", "dialogue condition", "dialogue effect"],
+  "first": 1000,
+  "blockSize": 100,
+  "blocks": [
+    { "first": 1600, "mod": "rivalry.core", "repo": "Meitou-Modding-Ecosystem/RivalryCore" },
+    { "first": 4400, "mod": "bathhouse", "repo": "Meitou-Modding-Ecosystem/Bathhouse" },
+    { "first": 4500, "mod": "husbandry", "repo": "Meitou-Modding-Ecosystem/Husbandry" },
+    { "first": 4600, "mod": "ashen.hand", "repo": "Meitou-Modding-Ecosystem/AshenHand" },
+    { "first": 4700, "mod": "squad.arena", "repo": "Meitou-Modding-Ecosystem/SquadArena" },
+    { "first": 4800, "mod": "logistics.core", "repo": "Meitou-Modding-Ecosystem/LogisticsCore" },
+    { "first": 7300, "mod": "fiefdom", "repo": "teppuM/meitou-fiefdom" }
+  ]
+}
