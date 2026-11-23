@@ -24,6 +24,7 @@ Mod repositories consume framework releases through `meitou.lock.json` and `msbu
 - [Publishing boundary and rollout](docs/publishing.md)
 - [Cost assumptions](docs/costs.md)
 - [Daily PR digest](docs/pr-digest.md)
+- [Mod number blocks](docs/numbers.md): each mod's 100-number block for task types and dialogue codes
 - [Workshop Watcher](docs/workshop-watcher.md): authors' own PCs upload new GitHub releases to the Steam Workshop
 - [Terraform module](terraform/README.md)
 
