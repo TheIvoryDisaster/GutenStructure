@@ -9,6 +9,7 @@
     { "first": 4600, "mod": "ashen.hand", "repo": "Meitou-Modding-Ecosystem/AshenHand" },
     { "first": 4700, "mod": "squad.arena", "repo": "Meitou-Modding-Ecosystem/SquadArena" },
     { "first": 4800, "mod": "logistics.core", "repo": "Meitou-Modding-Ecosystem/LogisticsCore" },
+    { "first": 4900, "mod": "animal.behaviors", "repo": "Meitou-Modding-Ecosystem/AnimalBehaviors" },
     { "first": 7300, "mod": "fiefdom", "repo": "teppuM/meitou-fiefdom" }
   ]
 }
