@@ -1,0 +1,16 @@
+# LF in the repository and in every checkout, whichever tool or OS wrote the file.
+* text=auto eol=lf
+
+# Binary assets: never convert their bytes.
+*.png binary
+*.jpg binary
+*.dds binary
+*.glb binary
+*.mesh binary
+*.skeleton binary
+*.mod binary
+*.pdf binary
+*.dll binary
+*.zip binary
+*.ogg binary
+*.wav binary
