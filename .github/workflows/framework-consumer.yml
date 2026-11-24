@@ -32,7 +32,7 @@ jobs:
           mkdir -p "$CONSUMER/build/gutenstructure"
           cp -r msbuild "$CONSUMER/build/gutenstructure/msbuild"
           engine=$(jq -r '.frameworks[0].engine' "$CONSUMER/meitou.lock.json")
-          git clone --quiet --filter=blob:none https://github.com/Meitou-Modding-Ecosystem/MeitouClient.git "$CONSUMER/engine"
+          git clone --quiet --filter=blob:none https://github.com/Meitou-Modding-Ecosystem/MeitouClientSandbox.git "$CONSUMER/engine"
           git -C "$CONSUMER/engine" checkout --quiet --detach "$engine"
       - name: Build and test against the locked release
         working-directory: ${{ env.CONSUMER }}

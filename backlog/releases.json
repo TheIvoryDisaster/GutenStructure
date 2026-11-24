@@ -2,7 +2,7 @@
   "branch": "release",
   "repositories": [
     {
-      "repository": "Meitou-Modding-Ecosystem/MeitouClient",
+      "repository": "Meitou-Modding-Ecosystem/MeitouClientSandbox",
       "source": "fork",
       "checks": [
         "build / build"
