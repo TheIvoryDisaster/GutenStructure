@@ -42,7 +42,8 @@ Inputs: `base` (default `beta`), `ci-workflow` (default `ci.yml`, must accept `w
   - each mod's `gameVersion` floor to `>=X.Y.Z`, dropping a cap at or below it;
   - a mod version already released to the next patch (`scripts/release_bump.py`).
 - Builds and tests on the new engine, commits to `engine-update/upstream`, opens `Meitou: Move engine to <tag>` labelled `needs-release`,
-  dispatches the caller's CI and merges when it is green and the branch rules allow.
+  dispatches the caller's CI and merges when its Development readiness passes (GitHub Actions' PR-only bypass of beta's CI rule,
+  [policy](branch-policy.md)).
 - A red PR stays open: the new Meitou broke something. Port it in that PR (skill `meitou-engine-release`).
 
 framework-update also moves the floor after it moves the engine to a lock's commit, when that commit carries a Meitou tag
