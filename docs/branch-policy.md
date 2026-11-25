@@ -11,9 +11,9 @@ Applies to every Meitou-Modding-Ecosystem repo, including Husbandry. The custom 
 
 Native required-team review uses team ID 20738063 (`super-maintainers`). CODEOWNERS may still document ownership but is not an extra approval gate. Authors cannot approve themselves; beta's native review bypass implements the authorized self-merge exception. It can also be used for another author's beta PR. GitHub Actions has no review bypass; dependency-update bots need a maintainer review/merge.
 
-**Release owner bypass (revision 5).** `release-debugger` (the owner's one-person team, `RELEASE_TEAM` in `scripts/release_gate.py`) may merge its own main and release promotion PRs without an approval, so a release doesn't wait for other maintainers. The bypass is `pull_request` mode on the approval ruleset only: the PR and CI ruleset has no bypass, so promotion still goes beta → main → release through PRs with green CI, and GitHub logs each bypass in the ruleset insights. Add someone to that team only if they may release alone.
+**Release owner bypass (revision 5).** `release-debugger` (the owner's one-person team, `RELEASE_TEAM`/`RELEASE_TEAM_ID` in `scripts/release_gate.py`) may merge its own main and release promotion PRs without an approval, so a release doesn't wait for other maintainers. The bypass is `pull_request` mode on the approval ruleset only: the PR and CI ruleset has no bypass, so promotion still goes beta → main → release through PRs with green CI, and GitHub logs each bypass in the ruleset insights. Add someone to that team only if they may release alone.
 
-The team is named by slug, not pinned by ID (owner's choice, 2026-11-22): reconciliation and the release gate look its ID up each run, so an organization owner who renames or recreates a team as `release-debugger` gives it the bypass. Reconciliation refuses a release team that is super-maintainers; the gate rejects a visible bypass when it can't read the team.
+The team is pinned by ID (`RELEASE_TEAM_ID` = 20828147 in `scripts/release_gate.py`): the gate accepts a bypass only for that ID, and reconciliation looks the team up by slug for its members but refuses it unless the ID matches. Renaming or recreating the team gives nothing a bypass; reconciliation fails until the slug and ID in `release_gate.py` are updated through a PR.
 
 ## Enforcement structure
 

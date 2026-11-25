@@ -119,6 +119,30 @@ class ProductionPositiveTests(unittest.TestCase):
             self.assertNotIn('--prerelease',self.commands[0])
             gate.assert_called_once()
 
+    @patch('scripts.publish_meitou_package.check_release')
+    def test_push_to_release_creates_the_version_tag_at_its_head(self,gate):
+        with tempfile.TemporaryDirectory() as folder:
+            api,path=self.setup_case(folder)
+            label='0.6.0'
+            filename='Framework-'+label+'.zip'
+            (path/self.filename).rename(path/filename)
+            (path/(filename+'.sha256')).write_text(self.digest+'  '+filename+'\n')
+            result=self.call(api,path,channel='release',ref='refs/heads/release',label=label)
+            self.assertEqual(result['tag'],'framework-v0.6.0')
+            self.assertEqual(self.commands[0][:4],['gh','release','create','framework-v0.6.0'])
+            self.assertIn(self.sha,self.commands[0])
+            gate.assert_called_once_with(api,'Meitou-Modding-Ecosystem/RivalryCore','refs/heads/release',self.sha)
+
+    @patch('scripts.publish_meitou_package.check_release')
+    def test_production_refuses_other_branches_and_other_tags(self,gate):
+        with tempfile.TemporaryDirectory() as folder:
+            api,path=self.setup_case(folder)
+            for ref in ('refs/heads/main','refs/tags/framework-v0.5.0'):
+                with self.assertRaisesRegex(ValueError,'Production tag mismatch'):
+                    self.call(api,path,channel='release',ref=ref,label='0.6.0')
+            gate.assert_not_called()
+            self.assertEqual(self.commands,[])
+
 
 class DocumentationOnlyAdvanceTests(unittest.TestCase):
     setup_case=PackagePublicationTests.setup_case

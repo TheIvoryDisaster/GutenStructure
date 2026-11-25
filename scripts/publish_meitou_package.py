@@ -58,7 +58,8 @@ def publish(api,command,repository,commit,ref,folder,slug,channel,label,digest,d
         if relation.get('status') not in ('ahead','identical'):
             raise ValueError('Snapshot commit is outside beta history')
     else:
-        if ref!='refs/tags/'+tag:raise ValueError('Production tag mismatch')
+        # A push to release tags its own head (the publisher creates the tag); a pushed tag must name this version.
+        if ref not in ('refs/tags/'+tag,'refs/heads/release'):raise ValueError('Production tag mismatch')
         check_release(api,repository,ref,commit)  # Recheck after build, before any write.
     path=Path(dist)
     filename=f'{folder}-{label}.zip'

@@ -1,0 +1,38 @@
+name: Package validation
+on:
+  workflow_call:
+    inputs:
+      mod-folder:
+        type: string
+        required: true
+      empty-data-mod:
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 11.0.x
+      - name: Validate publish output
+        env:
+          MOD_FOLDER: ${{ inputs.mod-folder }}
+          EMPTY_DATA_MOD: ${{ inputs.empty-data-mod }}
+          MeitouFrameworksStrict: 'true'
+        run: |
+          [[ "$MOD_FOLDER" =~ ^[A-Za-z][A-Za-z0-9_]{0,63}$ ]] || exit 1
+          out="$RUNNER_TEMP/package/$MOD_FOLDER"
+          dotnet publish "$MOD_FOLDER" -c Release -o "$out"
+          test -s "$out/$MOD_FOLDER.dll"
+          test -s "$out/meitou.json"
+          if [ "$EMPTY_DATA_MOD" != true ]; then
+            test -s "$out/$MOD_FOLDER.mod" || { echo 'Generated data mod is missing from the release payload'; exit 1; }
+          fi
