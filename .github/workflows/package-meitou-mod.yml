@@ -56,7 +56,13 @@ permissions:
   contents: read
 
 jobs:
+  production-compatibility:
+    if: inputs.channel == 'release'
+    uses: ./.github/workflows/upstream-compatibility.yml
+
   package:
+    needs: production-compatibility
+    if: always() && (inputs.channel == 'beta' || needs.production-compatibility.result == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

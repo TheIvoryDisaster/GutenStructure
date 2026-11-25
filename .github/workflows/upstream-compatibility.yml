@@ -1,0 +1,67 @@
+name: Upstream compatibility
+on:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  released-engine:
+    name: Released engine compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: 0d250f6858265cf5f47a5834371ccd59261f1dba
+          path: _compat-tools
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 11.0.x
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: '3.12'
+      - name: Check shipped mod and locked framework APIs
+        env:
+          MeitouFrameworksStrict: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          dotnet build _compat-tools/tools/refcheck/RefCheck.csproj -c Release -o "$RUNNER_TEMP/refcheck"
+          python3 -I _compat-tools/scripts/meitou_compat.py --root . --refcheck "$RUNNER_TEMP/refcheck/RefCheck.dll" --out "$RUNNER_TEMP/compat" --cache "$RUNNER_TEMP/engines"
+      - name: Save compatibility evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: production-engine-compatibility
+          path: |
+            ${{ runner.temp }}/compat/report.json
+            ${{ runner.temp }}/compat/issue.md
+          if-no-files-found: warn
+  upstream-source:
+    name: Upstream source compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 11.0.x
+      - name: Resolve and build against upstream master
+        env:
+          MeitouFrameworksStrict: 'true'
+        run: |
+          test -d engine
+          git -C engine fetch --no-tags https://github.com/VlcekM/MeitouClient.git refs/heads/master
+          upstream=$(git -C engine rev-parse FETCH_HEAD)
+          git -C engine checkout --detach "$upstream"
+          git -C engine submodule update --init --recursive
+          echo "Upstream engine commit: $upstream" >> "$GITHUB_STEP_SUMMARY"
+          dotnet build -c Release
+          dotnet test -c Release --no-build
