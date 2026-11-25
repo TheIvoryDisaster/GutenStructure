@@ -7,7 +7,7 @@ import urllib.error
 import urllib.request
 
 ALLOWED = {"TheIvoryDisaster/GutenStructure", *("Meitou-Modding-Ecosystem/" + name for name in (
-    "MeitouClientSandbox", "RivalryCore", "KenshiOracle", "PZAKenshiMotionLab", "TheWastelandRemembers", "PZAMeitouUi", "PZAMeitouUiProbe"))}
+    "MeitouClient", "MeitouClientSandbox", "RivalryCore", "KenshiOracle", "PZAKenshiMotionLab", "TheWastelandRemembers", "PZAMeitouUi", "PZAMeitouUiProbe"))}
 
 
 # Policy revision 5 (docs/branch-policy.md): the owner's one-person team may merge main/release promotion PRs without an approval.
