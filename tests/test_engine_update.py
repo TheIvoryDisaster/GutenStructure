@@ -1,7 +1,9 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts.engine_update import floored, main, newest, tag_of
 
@@ -39,6 +41,11 @@ class EngineUpdateTests(unittest.TestCase):
 
 class RepositoryTests(unittest.TestCase):
     def setUp(self):
+        # Outside a repository the script reads no releases; in Actions GITHUB_REPOSITORY would send the tests to the GitHub API.
+        env = mock.patch.dict(os.environ)
+        env.start()
+        self.addCleanup(env.stop)
+        os.environ.pop("GITHUB_REPOSITORY", None)
         self.dir = tempfile.TemporaryDirectory()
         self.root = Path(self.dir.name)
         (self.root / "tags.json").write_text(json.dumps(TAGS))
