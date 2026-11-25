@@ -53,8 +53,8 @@ jobs:
 4. Moves `engine` to that commit, builds and tests `test-project` with the strict engine check.
 5. Commits the lock, the widened manifests and the engine pointer to `framework-update/<channel>`, opens or updates one PR into `base`,
    dispatches CI on it and waits.
-6. Merges it (`merge`, default on) when the run's tests and the dispatched CI's Development readiness pass, through GitHub Actions' PR-only
-   bypass of beta's CI rule ([policy](branch-policy.md)). Where a base branch's rules still refuse it, the PR stays open, green, for a
-   maintainer to merge. A failing PR stays open and the run fails.
+6. Merges it (`merge`, default on) when the run's tests and the dispatched CI's Development readiness pass. A PR opened with the workflow
+   token starts no `pull_request` CI, so beta's required check refuses the merge ([policy](branch-policy.md)); the PR then stays open,
+   green, for a maintainer to merge. A failing PR stays open and the run fails.
 
 A run that finds nothing newer, or the same releases an open PR already holds, changes nothing.
