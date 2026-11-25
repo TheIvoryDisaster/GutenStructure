@@ -64,12 +64,12 @@ jobs:
         run: |
           [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ && "$TOOLS_REF" =~ ^[A-Za-z0-9._/-]+$ ]] \
             || { echo "invalid base, ci-workflow or tools-ref" >&2; exit 1; }
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base }}
           submodules: recursive
           persist-credentials: false
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: TheIvoryDisaster/GutenStructure
           ref: ${{ inputs.tools-ref }}
@@ -150,7 +150,7 @@ jobs:
             gh issue edit "$number" --title "$title" --body-file "$compat/issue.md"
           fi
           if [ "$nightly" = true ]; then gh issue edit "$number" --add-label "meitou-compat: nightly"; else gh issue edit "$number" --remove-label "meitou-compat: nightly"; fi
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.lift-caps
         with:
           ref: ${{ inputs.base }}

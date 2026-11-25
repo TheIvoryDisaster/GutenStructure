@@ -80,12 +80,12 @@ jobs:
           case "$CHANNEL" in release|beta) ;; *) echo "channel must be release or beta" >&2; exit 1 ;; esac
           [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ ]] || { echo "invalid base or ci-workflow" >&2; exit 1; }
           [[ "$TEST_PROJECT" != -* ]] || { echo "test-project cannot be an option" >&2; exit 1; }
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base }}
           submodules: recursive
           persist-credentials: false
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.tools-ref != ''
         with:
           repository: TheIvoryDisaster/GutenStructure
@@ -170,7 +170,7 @@ jobs:
       CI_WORKFLOW: ${{ inputs.ci-workflow }}
       MERGE: ${{ inputs.merge }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base }}
           persist-credentials: true
