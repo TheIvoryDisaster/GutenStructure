@@ -10,6 +10,7 @@
     { "first": 4700, "mod": "squad.arena", "repo": "Meitou-Modding-Ecosystem/SquadArena" },
     { "first": 4800, "mod": "logistics.core", "repo": "Meitou-Modding-Ecosystem/LogisticsCore" },
     { "first": 4900, "mod": "animal.behaviors", "repo": "Meitou-Modding-Ecosystem/AnimalBehaviors" },
+    { "first": 5000, "mod": "kenshi.races", "repo": "Meitou-Modding-Ecosystem/KenshiRaces" },
     { "first": 7300, "mod": "fiefdom", "repo": "teppuM/meitou-fiefdom" }
   ]
 }
