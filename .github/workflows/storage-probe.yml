@@ -37,7 +37,7 @@ jobs:
           PY
       - name: Sign in with temporary container-scoped identity
         if: inputs.verify_storage
-        uses: azure/login@935127ca5bb3c4b02c9c2c10060028383878f33f # v3
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3
         with:
           client-id: 100ab668-8f6a-4aa1-a524-6b7163b8f38c
           tenant-id: 5555277d-1b2b-415b-8d07-4a5bc3766657

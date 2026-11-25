@@ -1,4 +1,4 @@
-"""Approved development and production branch policy, revision 6."""
+"""Owner-approved development and production branch policy, revision 6 (docs/branch-policy.md is the source of truth)."""
 import copy
 from scripts.apply_release_policy import discover_repositories, optional, GitHubFailure
 from scripts.branch_policy import ORG, TEAM, ruleset
@@ -30,14 +30,15 @@ def policies(checks, release_team_id):
     required = [c for c in required if c['context'] not in ('Release readiness', 'Development readiness')]
     required.append({'context': 'Development readiness', 'integration_id': 15368})
     stable_review = copy.deepcopy(pr)
-    stable_review['parameters'].update(required_approving_review_count=2,
+    # One approval including code owners: an author cannot approve their own PR, so one is the other maintainer's.
+    stable_review['parameters'].update(required_approving_review_count=1,
         require_code_owner_review=True, dismiss_stale_reviews_on_push=True)
     return [ruleset(SAFETY,list(BRANCHES),[
         {'type':'deletion'},{'type':'non_fast_forward'},pr,
         {'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':False,
           'required_status_checks':required}}]),
         ruleset(BETA,['beta'],[copy.deepcopy(pr)]),
-        ruleset(STABLE,['main','release'],[stable_review]),
+        ruleset(STABLE,['main','release'],[stable_review],[release_bypass(release_team_id)]),
         ruleset('Meitou production compatibility',['release'],[
             {'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':True,
              'required_status_checks':[{'context':'Release readiness','integration_id':15368}]}}])]
@@ -111,8 +112,9 @@ def synchronize(api, plan, apply=False):
             replacement={k:copy.deepcopy(old[k]) for k in ('name','target','enforcement','conditions')}
             replacement.update(rules=remaining,bypass_actors=[])
             operations.append(('PUT' if remaining else 'DELETE',f'repos/{repo}/rulesets/{old["id"]}',replacement if remaining else None))
-        branches=api(f'repos/{repo}/branches?per_page=100')
-        if len(branches)>=100:raise ValueError('Incomplete branch inventory')
+        # Only protected branches can carry classic protection; a busy repo has well over 100 branches in all.
+        branches=api(f'repos/{repo}/branches?protected=true&per_page=100')
+        if len(branches)>=100:raise ValueError('Incomplete protected branch inventory')
         for b in branches:
             if b.get('protected') and optional(api,f'repos/{repo}/branches/{b["name"]}/protection'):
                 raise ValueError('Classic protection requires migration to isolate review bypass from CI')

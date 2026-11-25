@@ -27,7 +27,15 @@ jobs:
     with:
       channel: beta
       tools-ref: <the same GutenStructure commit>
+    secrets:
+      app-id: ${{ secrets.MEITOU_BOT_APP_ID }}
+      app-key: ${{ secrets.MEITOU_BOT_KEY }}
 ```
+
+Secrets `app-id`/`app-key` (optional, passed by name, never `secrets: inherit`): the org bot GitHub App (org secrets `MEITOU_BOT_APP_ID`,
+`MEITOU_BOT_KEY`; Contents and Pull requests read/write). With them the PR is opened with the App's token, so the caller's `pull_request`
+CI runs on it, beta's required check counts it and the workflow merges the PR once that run's Development readiness passes. Without them
+the PR (workflow token) gets no `pull_request` CI: the workflow dispatches CI itself and a maintainer merges the PR.
 
 - `channel: beta` for every dependent: each framework beta merge publishes an immutable snapshot, so a dependent's tests run against it
   within 6 hours and a failing PR reports the break before the framework's production release. `release` (the input's default) moves only on
@@ -53,7 +61,7 @@ jobs:
 4. Moves `engine` to that commit, builds and tests `test-project` with the strict engine check.
 5. Commits the lock, the widened manifests and the engine pointer to `framework-update/<channel>`, opens or updates one PR into `base`,
    dispatches CI on it and waits.
-6. Merges it (`merge`, default on) when both the run's tests and CI pass. Permanent organization policy grants no GitHub Actions review bypass; a super-maintainer must review/merge the PR ([policy](branch-policy.md)). Where a base branch's rules still need a review, the PR stays open, green, for a
-   maintainer to merge. A failing PR stays open and the run fails.
+6. Merges it (`merge`, default on) when the run's tests and the CI's Development readiness pass. Without the bot App (Secrets above)
+   beta's required check refuses the merge ([policy](branch-policy.md)); the PR then stays open, green, for a maintainer to merge. A failing PR stays open and the run fails.
 
 A run that finds nothing newer, or the same releases an open PR already holds, changes nothing.

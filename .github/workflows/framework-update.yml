@@ -1,12 +1,14 @@
 # Reusable: moves the caller's meitou.lock.json to the newest published framework releases and proposes it as a PR (docs/framework-update.md).
 #
 # - check (read-only token, no persisted credentials): runs scripts/framework_update.py from GutenStructure at tools-ref (or, without it, from
-#   the caller's build/gutenstructure submodule), moves the engine submodule to the releases' engine commit, then builds and tests the caller with the new lock (strict engine
+#   the caller's build/gutenstructure submodule), moves the engine submodule to the releases' engine commit (and the floor with it,
+#   scripts/engine_update.py --engine), then builds and tests the caller with the new lock (strict engine
 #   check). Uploads the changed files and the result. Nothing is written to the repository here.
 # - propose (contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): commits those files
 #   to framework-update/<channel>, opens or updates the PR into the base branch, dispatches the caller's CI on it (a PR opened with
 #   GITHUB_TOKEN triggers no workflows), waits for it and merges when it is green and the base branch's rules allow. A failing PR stays open
-#   as the regression report. No secrets are accepted; callers must not pass secrets: inherit.
+#   as the regression report. Secrets: only app-id/app-key (the org bot App), passed by name; callers must
+#   not pass secrets: inherit.
 name: Framework update
 
 on:
@@ -50,6 +52,13 @@ on:
       tested:
         description: success or failure of the build and tests with the new lock.
         value: ${{ jobs.check.outputs.tested }}
+    secrets:
+      app-id:
+        description: The org bot GitHub App's ID. With app-key, PRs are opened with its token, so they get the caller's pull_request CI.
+        required: false
+      app-key:
+        description: The org bot GitHub App's private key.
+        required: false
 
 permissions:
   contents: read
@@ -80,19 +89,19 @@ jobs:
           case "$CHANNEL" in release|beta) ;; *) echo "channel must be release or beta" >&2; exit 1 ;; esac
           [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ ]] || { echo "invalid base or ci-workflow" >&2; exit 1; }
           [[ "$TEST_PROJECT" != -* ]] || { echo "test-project cannot be an option" >&2; exit 1; }
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base }}
           submodules: recursive
           persist-credentials: false
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: inputs.tools-ref != ''
         with:
           repository: TheIvoryDisaster/GutenStructure
           ref: ${{ inputs.tools-ref }}
           path: _gutenstructure
           persist-credentials: false
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
       - name: Move the lock to the newest releases
@@ -117,6 +126,12 @@ jobs:
           git -C engine fetch --depth 1 origin "$engine"
           git -C engine checkout --detach "$engine"
           echo "$engine" > "$RUNNER_TEMP/engine.txt"
+          # The floor (Directory.Build.rsp and each gameVersion) follows the engine to its Meitou tag (docs/engine-update.md).
+          floor="$(dirname "$script")/engine_update.py"
+          if [ -f "$floor" ]; then
+            python3 -I "$floor" --engine "$engine" --summary "$RUNNER_TEMP/floor.md"
+            [ ! -f "$RUNNER_TEMP/floor.md" ] || { echo; cat "$RUNNER_TEMP/floor.md"; } >> "$RUNNER_TEMP/framework-update.md"
+          fi
           cat "$RUNNER_TEMP/framework-update.md" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         if: steps.lock.outputs.changed == 'true'
@@ -139,14 +154,14 @@ jobs:
         run: |
           out="$RUNNER_TEMP/update"
           mkdir -p "$out/files"
-          git diff --name-only -- meitou.lock.json '*/meitou.json' > "$out/paths.txt"
+          git diff --name-only -- meitou.lock.json Directory.Build.rsp '*/meitou.json' > "$out/paths.txt"
           while read -r path; do mkdir -p "$out/files/$(dirname "$path")"; cp "$path" "$out/files/$path"; done < "$out/paths.txt"
           cp "$RUNNER_TEMP/engine.txt" "$RUNNER_TEMP/framework-update.md" "$out/"
           echo "$OUTCOME" > "$out/outcome.txt"
           if [ "$OUTCOME" != success ]; then
             { echo; echo "**The build or tests failed with the new lock.** Last lines:"; echo; echo '```'; tail -n 40 "$RUNNER_TEMP/test.log"; echo '```'; } >> "$out/framework-update.md"
           fi
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.lock.outputs.changed == 'true'
         with:
           name: framework-update
@@ -163,18 +178,32 @@ jobs:
       pull-requests: write
       actions: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      HAS_APP: ${{ secrets.app-id != '' && secrets.app-key != '' }}
       GH_REPO: ${{ github.repository }}
       BASE: ${{ inputs.base }}
       BRANCH: framework-update/${{ inputs.channel }}
       CI_WORKFLOW: ${{ inputs.ci-workflow }}
       MERGE: ${{ inputs.merge }}
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Mint the org bot's token
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.app-id }}
+          private-key: ${{ secrets.app-key }}
+      # The bot's token opens PRs that start the caller's pull_request CI, which beta's required check counts; the workflow token's don't.
+      - name: Pick the token
+        env:
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+          WORKFLOW_TOKEN: ${{ github.token }}
+        run: echo "GH_TOKEN=${APP_TOKEN:-$WORKFLOW_TOKEN}" >> "$GITHUB_ENV"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.base }}
+          token: ${{ steps.app.outputs.token || github.token }}
           persist-credentials: true
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: framework-update
           path: ${{ runner.temp }}/update
@@ -183,12 +212,12 @@ jobs:
         run: |
           update="$RUNNER_TEMP/update"
           while read -r path; do
-            case "$path" in meitou.lock.json|*/meitou.json) cp "$update/files/$path" "$path" ;; *) echo "unexpected path $path" >&2; exit 1 ;; esac
+            case "$path" in meitou.lock.json|Directory.Build.rsp|*/meitou.json) cp "$update/files/$path" "$path" ;; *) echo "unexpected path $path" >&2; exit 1 ;; esac
           done < "$update/paths.txt"
           engine=$(cat "$update/engine.txt")
           [[ "$engine" =~ ^[0-9a-f]{40}$ ]] || { echo "bad engine commit" >&2; exit 1; }
           git update-index --cacheinfo "160000,$engine,engine"
-          git add meitou.lock.json $(grep '/meitou.json$' "$update/paths.txt" || true)
+          git add $(cat "$update/paths.txt")
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -F - <<< "Move the framework lock to the newest $(basename "$BRANCH") releases"$'\n\n'"$(cat "$update/framework-update.md")"
           if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
@@ -223,14 +252,20 @@ jobs:
         env:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"
+          # With the bot's token the PR's own pull_request run is the one beta counts; else dispatch one.
+          event=pull_request
+          [ "$HAS_APP" = true ] || { event=workflow_dispatch; gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"; }
           for _ in $(seq 30); do
-            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event workflow_dispatch --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
+            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event "$event" --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
             [ -n "$run" ] && break
             sleep 10
           done
           [ -n "$run" ] || { echo "the dispatched CI run did not appear" >&2; exit 1; }
-          gh run watch "$run" --exit-status --interval 30 > /dev/null && echo "result=success" >> "$GITHUB_OUTPUT" || echo "result=failure" >> "$GITHUB_OUTPUT"
+          gh run watch "$run" --interval 30 > /dev/null || true
+          # Beta's required check decides, as it does for a person's PR; the release-only compatibility jobs may be red on beta.
+          result=$(gh run view "$run" --json jobs --jq '[.jobs[] | select(.name == "Development readiness") | .conclusion][0] // empty')
+          [ -n "$result" ] || result=$(gh run view "$run" --json conclusion --jq .conclusion)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
       - name: Merge or report
         env:
           NUMBER: ${{ steps.pr.outputs.number }}

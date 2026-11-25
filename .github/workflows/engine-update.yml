@@ -1,0 +1,271 @@
+# Reusable: keeps the caller's engine submodule on the newest upstream Meitou build and proposes each move as a PR (docs/engine-update.md).
+#
+# - check (read-only token, no persisted credentials): runs scripts/engine_update.py from GutenStructure at tools-ref. In a repository with no
+#   frameworks locked it picks the newest VlcekM/MeitouClient tag (nightly or full release), moves the engine submodule there and moves
+#   Directory.Build.rsp and each gameVersion floor with it, then builds and tests the caller. Uploads the changed files and the result.
+#   A repository that locks frameworks follows their engine through framework-update, so nothing happens there.
+# - propose (contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): commits those files
+#   to engine-update/upstream, opens or updates the PR into the base branch, dispatches the caller's CI on it, waits for it and merges when it
+#   is green and the base branch's rules allow. A failing PR stays open: the new Meitou needs a port. Secrets: only app-id/app-key (the org bot
+#   App), passed by name; callers must not pass secrets: inherit.
+name: Engine update
+
+on:
+  workflow_call:
+    inputs:
+      base:
+        description: Branch the engine is moved on and the PR targets.
+        type: string
+        default: beta
+      ci-workflow:
+        description: The caller's CI workflow file, dispatched on the update branch; it must accept workflow_dispatch.
+        type: string
+        default: ci.yml
+      test-project:
+        description: Project or solution to build and test on the new engine.
+        type: string
+        default: .
+      merge:
+        description: Merge the PR once the caller's CI is green.
+        type: boolean
+        default: true
+      tools-ref:
+        description: The GutenStructure ref the update script comes from; pin it to the same commit as this workflow.
+        type: string
+        default: main
+      dotnet-version:
+        type: string
+        default: 11.0.x
+    outputs:
+      changed:
+        description: true when the engine moved.
+        value: ${{ jobs.check.outputs.changed }}
+      tested:
+        description: success or failure of the build and tests on the new engine.
+        value: ${{ jobs.check.outputs.tested }}
+    secrets:
+      app-id:
+        description: The org bot GitHub App's ID. With app-key, PRs are opened with its token, so they get the caller's pull_request CI.
+        required: false
+      app-key:
+        description: The org bot GitHub App's private key.
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: engine-update-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.engine.outputs.changed }}
+      tested: ${{ steps.test.outcome }}
+    steps:
+      - name: Validate inputs
+        env:
+          BASE: ${{ inputs.base }}
+          CI_WORKFLOW: ${{ inputs.ci-workflow }}
+          TEST_PROJECT: ${{ inputs.test-project }}
+          TOOLS_REF: ${{ inputs.tools-ref }}
+        run: |
+          [[ "$BASE" =~ ^[A-Za-z0-9._/-]+$ && "$CI_WORKFLOW" =~ ^[A-Za-z0-9._-]+\.ya?ml$ && "$TOOLS_REF" =~ ^[A-Za-z0-9._/-]+$ ]] \
+            || { echo "invalid base, ci-workflow or tools-ref" >&2; exit 1; }
+          [[ "$TEST_PROJECT" != -* ]] || { echo "test-project cannot be an option" >&2; exit 1; }
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.base }}
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: TheIvoryDisaster/GutenStructure
+          ref: ${{ inputs.tools-ref }}
+          path: _gutenstructure
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Move the engine to the newest upstream build
+        id: engine
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          engine=$(python3 -I _gutenstructure/scripts/engine_update.py --summary "$RUNNER_TEMP/engine-update.md" --tag-out "$RUNNER_TEMP/tag.txt")
+          if [ -z "$engine" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "The engine is on the newest upstream build, or follows the framework lock." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          [[ "$engine" =~ ^[0-9a-f]{40}$ ]] || { echo "bad engine commit $engine" >&2; exit 1; }
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          # The submodule's own remote serves upstream commits through the fork network; upstream itself is the fallback.
+          git -C engine fetch -q --depth 1 origin "$engine" || git -C engine fetch -q --depth 1 https://github.com/VlcekM/MeitouClient.git "$engine"
+          git -C engine checkout -q --detach "$engine"
+          echo "$engine" > "$RUNNER_TEMP/engine.txt"
+          cat "$RUNNER_TEMP/engine-update.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        if: steps.engine.outputs.changed == 'true'
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Build and test on the new engine
+        id: test
+        if: steps.engine.outputs.changed == 'true'
+        continue-on-error: true
+        env:
+          TEST_PROJECT: ${{ inputs.test-project }}
+        run: |
+          set -o pipefail
+          dotnet test "$TEST_PROJECT" --configuration Release 2>&1 | tee "$RUNNER_TEMP/test.log"
+      - name: Collect the changed files
+        if: steps.engine.outputs.changed == 'true'
+        env:
+          OUTCOME: ${{ steps.test.outcome }}
+        run: |
+          out="$RUNNER_TEMP/update"
+          mkdir -p "$out/files"
+          git diff --name-only -- Directory.Build.rsp '*/meitou.json' > "$out/paths.txt"
+          while read -r path; do mkdir -p "$out/files/$(dirname "$path")"; cp "$path" "$out/files/$path"; done < "$out/paths.txt"
+          cp "$RUNNER_TEMP/engine.txt" "$RUNNER_TEMP/tag.txt" "$RUNNER_TEMP/engine-update.md" "$out/"
+          echo "$OUTCOME" > "$out/outcome.txt"
+          if [ "$OUTCOME" != success ]; then
+            { echo; echo "**The build or tests failed on the new engine.** Last lines:"; echo; echo '```'; tail -n 40 "$RUNNER_TEMP/test.log"; echo '```'; } >> "$out/engine-update.md"
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.engine.outputs.changed == 'true'
+        with:
+          name: engine-update
+          path: ${{ runner.temp }}/update
+          retention-days: 7
+
+  propose:
+    needs: check
+    if: needs.check.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    env:
+      HAS_APP: ${{ secrets.app-id != '' && secrets.app-key != '' }}
+      GH_REPO: ${{ github.repository }}
+      BASE: ${{ inputs.base }}
+      BRANCH: engine-update/upstream
+      CI_WORKFLOW: ${{ inputs.ci-workflow }}
+      MERGE: ${{ inputs.merge }}
+    steps:
+      - name: Mint the org bot's token
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.app-id }}
+          private-key: ${{ secrets.app-key }}
+      # The bot's token opens PRs that start the caller's pull_request CI, which beta's required check counts; the workflow token's don't.
+      - name: Pick the token
+        env:
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+          WORKFLOW_TOKEN: ${{ github.token }}
+        run: echo "GH_TOKEN=${APP_TOKEN:-$WORKFLOW_TOKEN}" >> "$GITHUB_ENV"
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.base }}
+          token: ${{ steps.app.outputs.token || github.token }}
+          persist-credentials: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: engine-update
+          path: ${{ runner.temp }}/update
+      - name: Commit the update to its branch
+        id: commit
+        run: |
+          update="$RUNNER_TEMP/update"
+          while read -r path; do
+            case "$path" in Directory.Build.rsp|*/meitou.json) cp "$update/files/$path" "$path" ;; *) echo "unexpected path $path" >&2; exit 1 ;; esac
+          done < "$update/paths.txt"
+          engine=$(cat "$update/engine.txt")
+          [[ "$engine" =~ ^[0-9a-f]{40}$ ]] || { echo "bad engine commit" >&2; exit 1; }
+          tag=$(cat "$update/tag.txt")
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-nightly\.[0-9]{8}(\.[0-9]+)?)?$ ]] || { echo "bad tag $tag" >&2; exit 1; }
+          git update-index --cacheinfo "160000,$engine,engine"
+          [ -s "$update/paths.txt" ] && git add $(cat "$update/paths.txt")
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -F - <<< "Move the engine to Meitou $tag"$'\n\n'"$(cat "$update/engine-update.md")"
+          if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
+            echo "The open update already holds this engine." >> "$GITHUB_STEP_SUMMARY"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git push -q --force origin "HEAD:refs/heads/$BRANCH"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Open or update the PR
+        id: pr
+        env:
+          TAG: ${{ steps.commit.outputs.tag }}
+        run: |
+          body="$RUNNER_TEMP/update/engine-update.md"
+          title="Meitou: Move engine to ${TAG:-$(cat "$RUNNER_TEMP/update/tag.txt")}"
+          number=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number // empty')
+          if [ -z "$number" ]; then
+            gh pr create --head "$BRANCH" --base "$BASE" --title "$title" --body-file "$body"
+            number=$(gh pr list --head "$BRANCH" --base "$BASE" --state open --json number --jq '.[0].number')
+          else
+            gh pr edit "$number" --title "$title" --body-file "$body"
+          fi
+          echo "number=$number" >> "$GITHUB_OUTPUT"
+          # A new floor only reaches players with a release of the mod (docs/versioning.md)
+          if [ -s "$RUNNER_TEMP/update/paths.txt" ]; then
+            gh label create needs-release --color D93F0B --description "Merged changes only reach players with a release" --force
+            gh pr edit "$number" --add-label needs-release
+          fi
+      - name: Run the caller's CI on the update
+        if: steps.commit.outputs.pushed == 'true'
+        id: ci
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          # With the bot's token the PR's own pull_request run is the one beta counts; else dispatch one.
+          event=pull_request
+          [ "$HAS_APP" = true ] || { event=workflow_dispatch; gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"; }
+          for _ in $(seq 30); do
+            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event "$event" --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          [ -n "$run" ] || { echo "the dispatched CI run did not appear" >&2; exit 1; }
+          gh run watch "$run" --interval 30 > /dev/null || true
+          # Beta's required check decides, as it does for a person's PR; the release-only compatibility jobs may be red on beta.
+          result=$(gh run view "$run" --json jobs --jq '[.jobs[] | select(.name == "Development readiness") | .conclusion][0] // empty')
+          [ -n "$result" ] || result=$(gh run view "$run" --json conclusion --jq .conclusion)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
+      - name: Merge or report
+        env:
+          NUMBER: ${{ steps.pr.outputs.number }}
+          TESTED: ${{ needs.check.outputs.tested }}
+          CI_RESULT: ${{ steps.ci.outputs.result }}
+          PUSHED: ${{ steps.commit.outputs.pushed }}
+        run: |
+          [ "$PUSHED" = true ] || exit 0
+          if [ "$TESTED" != success ] || [ "$CI_RESULT" != success ]; then
+            echo "PR #$NUMBER stays open: the new Meitou needs a port (tests: $TESTED, CI: ${CI_RESULT:-not run})." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          if [ "$MERGE" != true ]; then
+            echo "PR #$NUMBER is green; merge is off." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if gh pr merge "$NUMBER" --merge --delete-branch; then
+            echo "Merged PR #$NUMBER." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "PR #$NUMBER is green but the base branch's rules kept the workflow from merging it: a maintainer merges it." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::PR #$NUMBER is green; the base branch's rules need a maintainer to merge it."
+          fi

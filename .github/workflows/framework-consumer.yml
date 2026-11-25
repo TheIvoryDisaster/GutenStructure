@@ -20,7 +20,7 @@ jobs:
     env:
       CONSUMER: ${{ github.workspace }}/../consumer
     steps:
-      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
@@ -32,7 +32,7 @@ jobs:
           mkdir -p "$CONSUMER/build/gutenstructure"
           cp -r msbuild "$CONSUMER/build/gutenstructure/msbuild"
           engine=$(jq -r '.frameworks[0].engine' "$CONSUMER/meitou.lock.json")
-          git clone --quiet --filter=blob:none https://github.com/Meitou-Modding-Ecosystem/MeitouClient.git "$CONSUMER/engine"
+          git clone --quiet --filter=blob:none https://github.com/Meitou-Modding-Ecosystem/MeitouClientSandbox.git "$CONSUMER/engine"
           git -C "$CONSUMER/engine" checkout --quiet --detach "$engine"
       - name: Build and test against the locked release
         working-directory: ${{ env.CONSUMER }}
