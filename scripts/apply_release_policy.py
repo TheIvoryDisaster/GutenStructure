@@ -167,7 +167,10 @@ def main():
                 return None if response.status == 204 else json.load(response)
         except urllib.error.HTTPError as error:
             raise GitHubFailure(error.code) from None
-    if args.target == "Meitou-Modding-Ecosystem" and plan.get("policy_version") == 5:
+    if args.target == "Meitou-Modding-Ecosystem" and plan.get("policy_version") == 6:
+        from scripts.development_branch_policy import synchronize as synchronize_development
+        report = synchronize_development(api, plan, args.apply)
+    elif args.target == "Meitou-Modding-Ecosystem" and plan.get("policy_version") == 5:
         from scripts.permanent_branch_policy import synchronize as synchronize_permanent
         report = synchronize_permanent(api, plan, args.apply)
     elif args.target == "Meitou-Modding-Ecosystem" and plan.get("policy_version") == 3:

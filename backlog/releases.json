@@ -61,8 +61,8 @@
     }
   ],
   "reconcile_future_public_repositories": true,
-  "policy_version": 5,
+  "policy_version": 6,
   "release_bypass_team": "release-debugger",
   "codeowner_self_merge_team": "super-maintainers",
-  "branch_policy": "permanent-native-team-with-beta-and-release-team-review-bypass"
+  "branch_policy": "sandbox-development-and-upstream-production"
 }
