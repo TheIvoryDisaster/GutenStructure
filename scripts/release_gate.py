@@ -55,9 +55,9 @@ def validate_rules(rules, details, personal=False, repository=None, release_team
             and parameters.get('required_approving_review_count', 0) >= 1
             and parameters.get('required_reviewers') == [{'file_patterns':['**'], 'minimum_approvals':1,
                  'reviewer':{'id':20738063,'type':'Team'}}])
-        if not personal and not interim and (parameters.get("required_approving_review_count", 0) < 2 or not parameters.get("require_code_owner_review")):
+        if not personal and not interim and (parameters.get("required_approving_review_count", 0) < 1 or not parameters.get("require_code_owner_review")):
             continue
-        stable = interim and ruleset.get("name") == "Meitou main and release approval"
+        stable = ruleset.get("name") == "Meitou main and release approval"
         allowed = [release_bypass(release_team)] if stable else []
         if ruleset.get("enforcement") == "active" and not_bypassable(ruleset, allowed):
             return

@@ -1,4 +1,4 @@
-"""Approved development and production branch policy, revision 6 (GitHub Actions may merge green beta PRs: docs/branch-policy.md)."""
+"""Owner-approved development and production branch policy, revision 6 (docs/branch-policy.md is the source of truth)."""
 import copy
 from scripts.apply_release_policy import discover_repositories, optional, GitHubFailure
 from scripts.branch_policy import ORG, TEAM, ruleset
@@ -11,9 +11,6 @@ STABLE = 'Meitou main and release approval'
 NAMES = {SAFETY, BETA, STABLE, 'Meitou production compatibility'}
 BRANCHES = ('beta', 'main', 'release')
 VERSION = 6
-# GitHub Actions (app 15368) merges the update workflows' PRs into beta. Its PR-only bypass of beta's CI ruleset covers the required check a
-# PR opened with the workflow token never gets (such a PR starts no pull_request CI); the workflows merge only after their own CI passes.
-ACTIONS_BYPASS = {'actor_type':'Integration','actor_id':15368,'bypass_mode':'pull_request'}
 
 
 def policies(checks, release_team_id):
@@ -33,14 +30,15 @@ def policies(checks, release_team_id):
     required = [c for c in required if c['context'] not in ('Release readiness', 'Development readiness')]
     required.append({'context': 'Development readiness', 'integration_id': 15368})
     stable_review = copy.deepcopy(pr)
-    stable_review['parameters'].update(required_approving_review_count=2,
+    # One approval including code owners: an author cannot approve their own PR, so one is the other maintainer's.
+    stable_review['parameters'].update(required_approving_review_count=1,
         require_code_owner_review=True, dismiss_stale_reviews_on_push=True)
-    checks_rule={'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':False,
-        'required_status_checks':required}}
-    return [ruleset(SAFETY,['main','release'],[{'type':'deletion'},{'type':'non_fast_forward'},pr,checks_rule]),
-        ruleset(BETA,['beta'],[{'type':'deletion'},{'type':'non_fast_forward'},copy.deepcopy(pr),copy.deepcopy(checks_rule)],
-            [ACTIONS_BYPASS]),
-        ruleset(STABLE,['main','release'],[stable_review]),
+    return [ruleset(SAFETY,list(BRANCHES),[
+        {'type':'deletion'},{'type':'non_fast_forward'},pr,
+        {'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':False,
+          'required_status_checks':required}}]),
+        ruleset(BETA,['beta'],[copy.deepcopy(pr)]),
+        ruleset(STABLE,['main','release'],[stable_review],[release_bypass(release_team_id)]),
         ruleset('Meitou production compatibility',['release'],[
             {'type':'required_status_checks','parameters':{'strict_required_status_checks_policy':True,
              'required_status_checks':[{'context':'Release readiness','integration_id':15368}]}}])]
@@ -97,8 +95,7 @@ def synchronize(api, plan, apply=False):
         desired=policies(checks,release_team_id)
         operations=[]
         for slug in grants:operations.append(('PUT',f'orgs/{ORG}/teams/{slug}/repos/{repo}',{'permission':'push'}))
-        # Beta's CI ruleset is written before the safety ruleset leaves beta, so beta is never without required CI.
-        for wanted in sorted(desired,key=lambda w:w['name']!=BETA):
+        for wanted in desired:
             matches=[r for r in existing if r['name']==wanted['name']]
             if len(matches)>1:raise ValueError('Duplicate permanent policy')
             old=matches[0] if matches else None

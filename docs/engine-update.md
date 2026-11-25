@@ -24,7 +24,15 @@ jobs:
     uses: TheIvoryDisaster/GutenStructure/.github/workflows/engine-update.yml@<commit>
     with:
       tools-ref: <commit>
+    secrets:
+      app-id: ${{ secrets.MEITOU_BOT_APP_ID }}
+      app-key: ${{ secrets.MEITOU_BOT_KEY }}
 ```
+
+Secrets `app-id`/`app-key` (optional, passed by name, never `secrets: inherit`): the org bot GitHub App (org secrets `MEITOU_BOT_APP_ID`,
+`MEITOU_BOT_KEY`; Contents and Pull requests read/write). With them the PR is opened with the App's token, so the caller's `pull_request`
+CI runs on it, beta's required check counts it and the workflow merges the PR once that run's Development readiness passes. Without them
+the PR (workflow token) gets no `pull_request` CI: the workflow dispatches CI itself and a maintainer merges the PR.
 
 Inputs: `base` (default `beta`), `ci-workflow` (default `ci.yml`, must accept `workflow_dispatch`), `test-project` (default `.`), `merge`
 (default `true`), `tools-ref` (the same commit as the `uses:` pin), `dotnet-version`.
@@ -42,8 +50,7 @@ Inputs: `base` (default `beta`), `ci-workflow` (default `ci.yml`, must accept `w
   - each mod's `gameVersion` floor to `>=X.Y.Z`, dropping a cap at or below it;
   - a mod version already released to the next patch (`scripts/release_bump.py`).
 - Builds and tests on the new engine, commits to `engine-update/upstream`, opens `Meitou: Move engine to <tag>` labelled `needs-release`,
-  dispatches the caller's CI and merges when its Development readiness passes (GitHub Actions' PR-only bypass of beta's CI rule,
-  [policy](branch-policy.md)).
+  waits for the caller's CI and merges when its Development readiness passes (with the bot App; see Secrets above).
 - A red PR stays open: the new Meitou broke something. Port it in that PR (skill `meitou-engine-release`).
 
 framework-update also moves the floor after it moves the engine to a lock's commit, when that commit carries a Meitou tag

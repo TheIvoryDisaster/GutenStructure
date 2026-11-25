@@ -6,7 +6,8 @@
 # - report (issues, contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): keeps one
 #   open issue labelled meitou-compat in step with the report (opened, updated, closed once clean), and when a cap can move, commits the lifted
 #   manifests to meitou-compat/cap-lift, opens the PR labelled needs-release, dispatches the caller's CI and merges when it is green and the
-#   base branch's rules allow. No secrets are accepted; callers must not pass secrets: inherit.
+#   base branch's rules allow. Secrets: only app-id/app-key (the org bot App), passed by name; callers must
+#   not pass secrets: inherit.
 name: Meitou compatibility
 
 on:
@@ -39,6 +40,13 @@ on:
       issues:
         description: How many problems need a person (0 when clean).
         value: ${{ jobs.check.outputs.issues }}
+    secrets:
+      app-id:
+        description: The org bot GitHub App's ID. With app-key, PRs are opened with its token, so they get the caller's pull_request CI.
+        required: false
+      app-key:
+        description: The org bot GitHub App's private key.
+        required: false
 
 permissions:
   contents: read
@@ -118,7 +126,7 @@ jobs:
       pull-requests: write
       actions: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      HAS_APP: ${{ secrets.app-id != '' && secrets.app-key != '' }}
       GH_REPO: ${{ github.repository }}
       BASE: ${{ inputs.base }}
       BRANCH: meitou-compat/cap-lift
@@ -126,6 +134,19 @@ jobs:
       MERGE: ${{ inputs.merge }}
       LIFT: ${{ inputs.lift-caps }}
     steps:
+      - name: Mint the org bot's token
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.app-id }}
+          private-key: ${{ secrets.app-key }}
+      # The bot's token opens PRs that start the caller's pull_request CI, which beta's required check counts; the workflow token's don't.
+      - name: Pick the token
+        env:
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+          WORKFLOW_TOKEN: ${{ github.token }}
+        run: echo "GH_TOKEN=${APP_TOKEN:-$WORKFLOW_TOKEN}" >> "$GITHUB_ENV"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: meitou-compat
@@ -155,6 +176,7 @@ jobs:
         with:
           ref: ${{ inputs.base }}
           path: caller
+          token: ${{ steps.app.outputs.token || github.token }}
           persist-credentials: true
       - name: Commit the lifted caps to their branch
         id: commit
@@ -202,9 +224,11 @@ jobs:
         env:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"
+          # With the bot's token the PR's own pull_request run is the one beta counts; else dispatch one.
+          event=pull_request
+          [ "$HAS_APP" = true ] || { event=workflow_dispatch; gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"; }
           for _ in $(seq 30); do
-            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event workflow_dispatch --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
+            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event "$event" --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
             [ -n "$run" ] && break
             sleep 10
           done
@@ -224,8 +248,7 @@ jobs:
             echo "PR #$NUMBER is green; merge is off." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          # --admin: GitHub Actions' PR-only bypass of beta's CI rule (docs/branch-policy.md); this step runs only once CI passed.
-          if gh pr merge "$NUMBER" --merge --delete-branch --admin; then
+          if gh pr merge "$NUMBER" --merge --delete-branch; then
             echo "Merged PR #$NUMBER." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::PR #$NUMBER is green; the base branch's rules need a maintainer to merge it."

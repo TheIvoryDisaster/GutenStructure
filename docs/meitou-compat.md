@@ -23,7 +23,15 @@ jobs:
     uses: TheIvoryDisaster/GutenStructure/.github/workflows/meitou-compat.yml@<commit>
     with:
       tools-ref: <commit>
+    secrets:
+      app-id: ${{ secrets.MEITOU_BOT_APP_ID }}
+      app-key: ${{ secrets.MEITOU_BOT_KEY }}
 ```
+
+Secrets `app-id`/`app-key` (optional, passed by name, never `secrets: inherit`): the org bot GitHub App (org secrets `MEITOU_BOT_APP_ID`,
+`MEITOU_BOT_KEY`; Contents and Pull requests read/write). With them the PR is opened with the App's token, so the caller's `pull_request`
+CI runs on it, beta's required check counts it and the workflow merges the PR once that run's Development readiness passes. Without them
+the PR (workflow token) gets no `pull_request` CI: the workflow dispatches CI itself and a maintainer merges the PR.
 
 Inputs: `base` (default `beta`; a repository without one passes `main`), `ci-workflow` (default `ci.yml`, must accept `workflow_dispatch`),
 `lift-caps` and `merge` (default `true`), `tools-ref` (the same commit as the `uses:` pin), `dotnet-version`.

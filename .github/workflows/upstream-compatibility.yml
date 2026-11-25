@@ -55,7 +55,9 @@ jobs:
           dotnet-version: 11.0.x
       - name: Resolve and build against upstream master
         env:
-          MeitouFrameworksStrict: 'true'
+          # The locked frameworks were built on the pinned engine, never on master, so the lock's engine check would always fail here.
+          # This job asks whether the caller's source builds and tests on master; Released engine compatibility keeps the strict check.
+          MeitouFrameworksStrict: 'false'
         run: |
           test -d engine
           git -C engine fetch --no-tags https://github.com/VlcekM/MeitouClient.git refs/heads/master

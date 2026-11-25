@@ -213,7 +213,9 @@ jobs:
 
   publish:
     needs: package
-    if: needs.package.outputs.skipped != 'true'
+    # always(): on the beta channel production-compatibility is skipped, and a skipped job anywhere upstream makes the implicit
+    # success() false, so without it beta packages build but never publish.
+    if: always() && needs.package.result == 'success' && needs.package.outputs.skipped != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

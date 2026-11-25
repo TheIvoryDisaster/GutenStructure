@@ -1,12 +1,10 @@
 # Development and production policy
 
-Revision 6 replaces revision 5 when activated in backlog/releases.json.
-
-Beta requires a PR, Development readiness and existing independent security checks, with zero reviews. Main requires the same checks and two reviews including code owners. Release adds Release readiness and requires two reviews including code owners. All managed safety and review rules have empty bypass lists. Ordinary feature branches remain unprotected.
+The branch table, including review counts, lives in [branch-policy.md](branch-policy.md) and is owner-approved; this page describes the CI behind it.
 
 Development readiness aggregates existing builds, tests and Play deployment against the repository's pinned engine and framework dependencies. Engine release diagnostics remain visible on development PRs and do not join this aggregate. Release readiness requires development, upstream source compatibility, released engine compatibility and applicable package validation only when targeting release. Failed, skipped and cancelled required jobs block the corresponding aggregate.
 
-Upstream source compatibility records the resolved VlcekM/MeitouClient master commit and builds/tests against it in a separate job. Released compatibility checks the sandbox-built mod and locked framework assemblies using the existing compatibility tool against current released engine binaries and manifest floors. Nightly diagnostics remain advisory.
+Upstream source compatibility records the resolved VlcekM/MeitouClient master commit and builds/tests against it in a separate job, without the lock's engine check (locked frameworks are built on the pinned engine, not master). Released compatibility checks the sandbox-built mod and locked framework assemblies using the existing compatibility tool against current released engine binaries and manifest floors. Nightly diagnostics remain advisory.
 
 The reusable production packager independently requires upstream and released compatibility, including tag-triggered runs. Its existing package completeness and checksum checks run before the write-token publisher receives an artifact. Beta packages retain their sandbox commit and dependency identity in notes and locks.
 
