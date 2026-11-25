@@ -5,11 +5,11 @@ Applies to every Meitou-Modding-Ecosystem repo, including Husbandry. The custom 
 | Branch | Policy |
 | --- | --- |
 | Ordinary branches, including master/fork | No branch protection |
-| beta | PR and passing CI. super-maintainers may bypass review through a PR, including their own PRs. |
+| beta | PR and passing CI. GitHub Actions may merge a PR without the required check (the update workflows, after their own CI passed). |
 | main | PR, passing CI, one independent super-maintainers approval. `release-debugger` may bypass the approval through a PR. |
 | release | PR, passing CI, one independent super-maintainers approval. `release-debugger` may bypass the approval through a PR. |
 
-Native required-team review uses team ID 20738063 (`super-maintainers`). CODEOWNERS may still document ownership but is not an extra approval gate. Authors cannot approve themselves; beta's native review bypass implements the authorized self-merge exception. It can also be used for another author's beta PR. GitHub Actions has no review bypass; dependency-update bots need a maintainer review/merge.
+Native required-team review uses team ID 20738063 (`super-maintainers`). CODEOWNERS may still document ownership but is not an extra approval gate. Authors cannot approve themselves; beta's native review bypass implements the authorized self-merge exception. It can also be used for another author's beta PR. GitHub Actions (app 15368) has a PR-only bypass of beta's CI ruleset: a PR opened with the workflow token starts no `pull_request` CI, so the required check never reports on it. `engine-update`, `framework-update` and `meitou-compat` dispatch CI themselves and merge (`gh pr merge --admin`) only when its Development readiness passed. Direct pushes to beta stay blocked; main and release have no Actions bypass.
 
 **Release owner bypass (revision 5).** `release-debugger` (the owner's one-person team, `RELEASE_TEAM`/`RELEASE_TEAM_ID` in `scripts/release_gate.py`) may merge its own main and release promotion PRs without an approval, so a release doesn't wait for other maintainers. The bypass is `pull_request` mode on the approval ruleset only: the PR and CI ruleset has no bypass, so promotion still goes beta → main → release through PRs with green CI, and GitHub logs each bypass in the ruleset insights. Add someone to that team only if they may release alone.
 
@@ -17,8 +17,8 @@ The team is pinned by ID (`RELEASE_TEAM_ID` = 20828147 in `scripts/release_gate.
 
 ## Enforcement structure
 
-- **Meitou mandatory PR and CI**: beta/main/release; PR required, configured CI required, force-push/deletion blocked, no bypass actors.
-- **Meitou beta maintainer review**: beta only; native one-team-approval rule with Team 20738063 PR-only bypass. It contains no CI/safety rules.
+- **Meitou mandatory PR and CI**: main/release; PR required, configured CI required, force-push/deletion blocked, no bypass actors.
+- **Meitou beta maintainer review**: beta only; PR required (no approvals), configured CI required, force-push/deletion blocked; GitHub Actions PR-only bypass.
 - **Meitou main and release approval**: main/release only; native one-team-approval rule with a `release-debugger` PR-only bypass.
 
 New reviewable commits dismiss stale approvals. No extra last-pusher approval, no extra bot-attribution approval, no additional CODEOWNER review. CI need not be strictly up to date with base; CI still must pass. Independent security/signature/code-scanning requirements are retained on protected branches. Ordinary development/mirror branches are not added to the protected scopes. Other inherited/custom-scoped protections are inspected rather than silently weakened.

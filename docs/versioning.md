@@ -40,7 +40,7 @@ The release itself (promotion to `main` and `release`, the tag) still needs a su
 
 ## `gameVersion`
 
-- **Floor**: the oldest Meitou release the mod is built and stamped for. Keep `Directory.Build.rsp` (`-p:AssemblyVersion=<floor>.0`) and
+- **Floor**: the oldest Meitou release the mod is built and stamped for (a nightly counts as the release it leads to). Keep `Directory.Build.rsp` (`-p:AssemblyVersion=<floor>.0`) and
   the floor equal.
 - **Cap**: only below a release where a break is **known** (RefCheck or a test found it), e.g. `<0.22.2` once 0.22.2 removed a member the
   mod calls. Never cap below an untested release ahead of time.
@@ -49,8 +49,10 @@ The release itself (promotion to `main` and `release`, the tag) still needs a su
 
 ## Engine pin
 
-- A repository with a [framework lock](framework-lock.md) uses the locked frameworks' engine commit; framework-update moves both together.
-- A repository without frameworks pins the `engine` submodule to an upstream Meitou release tag, not a development commit.
+- A repository without frameworks pins the `engine` submodule to the newest upstream Meitou tag, nightly or full release.
+  [Engine update](engine-update.md) moves it, `Directory.Build.rsp` and the floors there within hours of each upstream build.
+- A repository with a [framework lock](framework-lock.md) uses the locked frameworks' engine commit; framework-update moves both together,
+  and the floor with them.
 
 ## A breaking change: what the agent does
 

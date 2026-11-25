@@ -28,9 +28,9 @@ class ReleaseGateTests(unittest.TestCase):
             validate_rules([self.rule()], lambda _: {"enforcement": "active", "current_user_can_bypass": "always"})
 
     def test_other_branches_and_old_release_commits_are_rejected(self):
-        repository = "Meitou-Modding-Ecosystem/MeitouClient"
+        repository = "Meitou-Modding-Ecosystem/MeitouClientSandbox"
         def api(path):
-            if path.endswith("MeitouClient"):
+            if path.endswith("MeitouClientSandbox"):
                 return {"owner": {"id": 357134506}}
             return {"commit": {"sha": "approved"}}
         with self.assertRaises(RuntimeError):

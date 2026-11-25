@@ -224,7 +224,8 @@ jobs:
             echo "PR #$NUMBER is green; merge is off." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if gh pr merge "$NUMBER" --merge --delete-branch; then
+          # --admin: GitHub Actions' PR-only bypass of beta's CI rule (docs/branch-policy.md); this step runs only once CI passed.
+          if gh pr merge "$NUMBER" --merge --delete-branch --admin; then
             echo "Merged PR #$NUMBER." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::warning::PR #$NUMBER is green; the base branch's rules need a maintainer to merge it."

@@ -14,7 +14,7 @@ Call `.github/workflows/build-dotnet.yml` or `build-python.yml` from repository 
 
 ## Framework lock
 
-Mod repositories consume framework releases through `meitou.lock.json` and `msbuild/Meitou.Frameworks.targets`: hash-checked downloads, engine and range checks, and a local-clone override. See [framework lock](docs/framework-lock.md). [Framework update](docs/framework-update.md) moves a lock to new framework releases and merges it when the mod's CI passes. [Versioning](docs/versioning.md) says when a framework bumps its minor version, how dependents set their ranges and `gameVersion`, and what an agent does about a breaking change. The [Meitou compatibility watch](docs/meitou-compat.md) checks each mod daily against the newest Meitou release and nightly, opens an issue on a break, and lifts a `gameVersion` cap when a release breaks nothing.
+Mod repositories consume framework releases through `meitou.lock.json` and `msbuild/Meitou.Frameworks.targets`: hash-checked downloads, engine and range checks, and a local-clone override. See [framework lock](docs/framework-lock.md). [Framework update](docs/framework-update.md) moves a lock to new framework releases and merges it when the mod's CI passes. [Versioning](docs/versioning.md) says when a framework bumps its minor version, how dependents set their ranges and `gameVersion`, and what an agent does about a breaking change. The [Meitou compatibility watch](docs/meitou-compat.md) checks each mod daily against the newest Meitou release and nightly, opens an issue on a break, and lifts a `gameVersion` cap when a release breaks nothing. [Engine update](docs/engine-update.md) keeps each mod's engine, stamp and floor on the newest upstream Meitou build.
 
 ## Infrastructure and publishing
 
@@ -24,6 +24,7 @@ Mod repositories consume framework releases through `meitou.lock.json` and `msbu
 - [Publishing boundary and rollout](docs/publishing.md)
 - [Cost assumptions](docs/costs.md)
 - [Daily PR digest](docs/pr-digest.md)
+- [Mod number blocks](docs/numbers.md): each mod's 100-number block for task types and dialogue codes
 - [Workshop Watcher](docs/workshop-watcher.md): authors' own PCs upload new GitHub releases to the Steam Workshop
 - [Terraform module](terraform/README.md)
 

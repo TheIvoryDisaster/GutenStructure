@@ -1,8 +1,8 @@
 # Reusable: packages one Meitou code mod from the calling repository and publishes it as a GitHub Release asset.
 #
 # - package (read-only token, no persisted credentials): builds and tests the caller's code, packs <mod-folder>/ as it goes into
-#   Kenshi/mods/ (the mod's DLL, PDB, meitou.json and <mod-folder>.mod; the game supplies its own assemblies) and uploads the zip
-#   and its SHA-256 as a workflow artifact. The version comes only from <mod-folder>/meitou.json.
+#   Kenshi/mods/ (the mod's DLL, PDB, meitou.json, <mod-folder>.mod, items/ and its imported models; the game supplies its own
+#   assemblies) and uploads the zip and its SHA-256 as a workflow artifact. The version comes only from <mod-folder>/meitou.json.
 # - publish (contents: write on the caller's own GITHUB_TOKEN): downloads that artifact and creates the release. It checks out only a pinned central
 #   publisher implementation and runs nothing from the caller. No secrets are accepted; callers must not pass secrets: inherit.
 #
@@ -148,6 +148,15 @@ jobs:
           # Only the mod's own files: the game supplies its assemblies.
           find "$out" -mindepth 1 -maxdepth 1 ! -type f -exec rm -rf {} +
           find "$out" -maxdepth 1 -type f ! -name "$MOD_FOLDER.dll" ! -name "$MOD_FOLDER.pdb" ! -name "$MOD_FOLDER.mod" ! -name meitou.json -delete
+
+          # The mod's game assets, as a local Play deploy lays them out: items/ (icons, animations) as it is, and the models in
+          # Structures/ and ItemModels/ imported by the repository's tools/StructureImport (meshes, textures and collision under
+          # structures/, their records merged into the .mod). The import needs no game install.
+          if [ -d "$MOD_FOLDER/items" ]; then cp -R "$MOD_FOLDER/items" "$out/items"; fi
+          if [ -d "$MOD_FOLDER/Structures" ] || [ -d "$MOD_FOLDER/ItemModels" ]; then
+            [ -f tools/StructureImport/StructureImport.csproj ] || { echo "$MOD_FOLDER has models but no tools/StructureImport" >&2; exit 1; }
+            dotnet run --project tools/StructureImport -c Release -- "$MOD_FOLDER/Structures" "$out"
+          fi
 
           # The game loads a code mod through its data mod. An empty one is an FCS V17 header with no records: type 17, header
           # length 20, version 1, four empty strings (author, description, dependencies, references), next id 0, record count 0.
