@@ -44,6 +44,11 @@ jobs:
         self.assertEqual(result['on']['pull_request']['branches'], ['beta', 'main', 'release'])
         self.assertEqual(jobs['build']['steps'], [{'run': 'make'}])
 
+    def test_workflow_booleans_keep_their_types(self):
+        value = yaml.load('on: {push: null}\nconcurrency: {cancel-in-progress: true}\n', Loader=WorkflowLoader)
+        self.assertIn('on', value)
+        self.assertIs(value['concurrency']['cancel-in-progress'], True)
+
     def test_required_skips_fail_and_beta_ignores_upstream(self):
         from scripts.migrate_branch_ci import aggregate
         script = aggregate('Release readiness', [], True)['steps'][0]['run'].split('\n', 1)[1].rsplit('PYCODE', 1)[0]
