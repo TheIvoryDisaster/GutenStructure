@@ -9,12 +9,21 @@ class DevelopmentPolicyTests(unittest.TestCase):
         safety, beta, stable, production = policies(['Release readiness'], 20828147)
         self.assertEqual(safety['rules'][-1]['parameters']['required_status_checks'],
                          [{'context': 'Development readiness', 'integration_id': 15368}])
-        self.assertEqual(beta['rules'][0]['parameters']['required_approving_review_count'], 0)
+        beta_review = next(r for r in beta['rules'] if r['type'] == 'pull_request')
+        self.assertEqual(beta_review['parameters']['required_approving_review_count'], 0)
         self.assertEqual(stable['rules'][0]['parameters']['required_approving_review_count'], 2)
         self.assertTrue(stable['rules'][0]['parameters']['require_code_owner_review'])
         self.assertEqual(production['conditions']['ref_name']['include'], ['refs/heads/release'])
-        for policy in (safety, beta, stable, production):
+        for policy in (safety, stable, production):
             self.assertEqual(policy['bypass_actors'], [])
+
+    def test_beta_keeps_ci_and_lets_actions_merge_through_a_pr(self):
+        safety, beta, _, _ = policies(['build / build', 'Release readiness'], 20828147)
+        self.assertEqual(safety['conditions']['ref_name']['include'], ['refs/heads/main', 'refs/heads/release'])
+        self.assertEqual(beta['conditions']['ref_name']['include'], ['refs/heads/beta'])
+        self.assertEqual([r['type'] for r in beta['rules']], [r['type'] for r in safety['rules']])
+        self.assertEqual(beta['rules'][-1], safety['rules'][-1])
+        self.assertEqual(beta['bypass_actors'], [{'actor_type': 'Integration', 'actor_id': 15368, 'bypass_mode': 'pull_request'}])
 
     def test_non_compatibility_checks_remain_required(self):
         safety = policies(['build / build', 'CodeQL', 'Release readiness'], 20828147)[0]

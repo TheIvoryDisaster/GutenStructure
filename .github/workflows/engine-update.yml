@@ -219,7 +219,11 @@ jobs:
             sleep 10
           done
           [ -n "$run" ] || { echo "the dispatched CI run did not appear" >&2; exit 1; }
-          gh run watch "$run" --exit-status --interval 30 > /dev/null && echo "result=success" >> "$GITHUB_OUTPUT" || echo "result=failure" >> "$GITHUB_OUTPUT"
+          gh run watch "$run" --interval 30 > /dev/null || true
+          # Beta's required check decides, as it does for a person's PR; the release-only compatibility jobs may be red on beta.
+          result=$(gh run view "$run" --json jobs --jq '[.jobs[] | select(.name == "Development readiness") | .conclusion][0] // empty')
+          [ -n "$result" ] || result=$(gh run view "$run" --json conclusion --jq .conclusion)
+          echo "result=$result" >> "$GITHUB_OUTPUT"
       - name: Merge or report
         env:
           NUMBER: ${{ steps.pr.outputs.number }}
@@ -236,7 +240,8 @@ jobs:
             echo "PR #$NUMBER is green; merge is off." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          if gh pr merge "$NUMBER" --merge --delete-branch; then
+          # --admin: GitHub Actions' PR-only bypass of beta's CI rule (docs/branch-policy.md); this step runs only once CI passed.
+          if gh pr merge "$NUMBER" --merge --delete-branch --admin; then
             echo "Merged PR #$NUMBER." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "PR #$NUMBER is green but the base branch's rules kept the workflow from merging it: a maintainer merges it." >> "$GITHUB_STEP_SUMMARY"
