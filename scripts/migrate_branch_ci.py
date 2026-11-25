@@ -13,6 +13,8 @@ WorkflowLoader.yaml_implicit_resolvers = {
     key: [(tag, regexp) for tag, regexp in values if tag != 'tag:yaml.org,2002:bool']
     for key, values in WorkflowLoader.yaml_implicit_resolvers.items()
 }
+WorkflowLoader.add_implicit_resolver(
+    'tag:yaml.org,2002:bool', re.compile(r'^(?:true|false|True|False|TRUE|FALSE)$'), list('tTfF'))
 
 
 def aggregate(name, dependencies, production=False):
