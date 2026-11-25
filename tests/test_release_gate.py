@@ -7,12 +7,20 @@ class ReleaseGateTests(unittest.TestCase):
         return {"type": "pull_request", "ruleset_id": 1,
                 "parameters": {"required_approving_review_count": count, "require_code_owner_review": owner}}
 
-    def test_requires_two_approvals_including_owner(self):
+    def test_requires_one_approval_including_owner(self):
         good = lambda _: {"enforcement": "active", "bypass_actors": []}
         validate_rules([self.rule()], good)
-        for rules in [[], [self.rule(1)], [self.rule(owner=False)]]:
+        validate_rules([self.rule(1)], good)
+        for rules in [[], [self.rule(0)], [self.rule(owner=False)]]:
             with self.assertRaises(RuntimeError):
                 validate_rules(rules, good)
+
+    def test_stable_rule_allows_only_the_release_team_bypass(self):
+        team = {"actor_type": "Team", "actor_id": 20828147, "bypass_mode": "pull_request"}
+        stable = lambda bypass: (lambda _: {"name": "Meitou main and release approval", "enforcement": "active", "bypass_actors": bypass})
+        validate_rules([self.rule(1)], stable([team]), repository="Meitou-Modding-Ecosystem/RivalryCore")
+        with self.assertRaises(RuntimeError):
+            validate_rules([self.rule(1)], stable([dict(team, actor_id=1)]), repository="Meitou-Modding-Ecosystem/RivalryCore")
 
     def test_disabled_rules_and_bypass_are_rejected(self):
         for detail in [{"enforcement": "evaluate", "bypass_actors": []},

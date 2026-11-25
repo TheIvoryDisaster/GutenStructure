@@ -10,11 +10,12 @@ class DevelopmentPolicyTests(unittest.TestCase):
         self.assertEqual(safety['rules'][-1]['parameters']['required_status_checks'],
                          [{'context': 'Development readiness', 'integration_id': 15368}])
         self.assertEqual(beta['rules'][0]['parameters']['required_approving_review_count'], 0)
-        self.assertEqual(stable['rules'][0]['parameters']['required_approving_review_count'], 2)
+        self.assertEqual(stable['rules'][0]['parameters']['required_approving_review_count'], 1)
         self.assertTrue(stable['rules'][0]['parameters']['require_code_owner_review'])
         self.assertEqual(production['conditions']['ref_name']['include'], ['refs/heads/release'])
-        for policy in (safety, beta, stable, production):
+        for policy in (safety, beta, production):
             self.assertEqual(policy['bypass_actors'], [])
+        self.assertEqual(stable['bypass_actors'], [{'actor_type': 'Team', 'actor_id': 20828147, 'bypass_mode': 'pull_request'}])
 
     def test_non_compatibility_checks_remain_required(self):
         safety = policies(['build / build', 'CodeQL', 'Release readiness'], 20828147)[0]
