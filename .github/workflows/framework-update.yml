@@ -1,7 +1,8 @@
 # Reusable: moves the caller's meitou.lock.json to the newest published framework releases and proposes it as a PR (docs/framework-update.md).
 #
 # - check (read-only token, no persisted credentials): runs scripts/framework_update.py from GutenStructure at tools-ref (or, without it, from
-#   the caller's build/gutenstructure submodule), moves the engine submodule to the releases' engine commit, then builds and tests the caller with the new lock (strict engine
+#   the caller's build/gutenstructure submodule), moves the engine submodule to the releases' engine commit (and the floor with it,
+#   scripts/engine_update.py --engine), then builds and tests the caller with the new lock (strict engine
 #   check). Uploads the changed files and the result. Nothing is written to the repository here.
 # - propose (contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): commits those files
 #   to framework-update/<channel>, opens or updates the PR into the base branch, dispatches the caller's CI on it (a PR opened with
@@ -117,6 +118,12 @@ jobs:
           git -C engine fetch --depth 1 origin "$engine"
           git -C engine checkout --detach "$engine"
           echo "$engine" > "$RUNNER_TEMP/engine.txt"
+          # The floor (Directory.Build.rsp and each gameVersion) follows the engine to its Meitou tag (docs/engine-update.md).
+          floor="$(dirname "$script")/engine_update.py"
+          if [ -f "$floor" ]; then
+            python3 -I "$floor" --engine "$engine" --summary "$RUNNER_TEMP/floor.md"
+            [ ! -f "$RUNNER_TEMP/floor.md" ] || { echo; cat "$RUNNER_TEMP/floor.md"; } >> "$RUNNER_TEMP/framework-update.md"
+          fi
           cat "$RUNNER_TEMP/framework-update.md" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         if: steps.lock.outputs.changed == 'true'
@@ -139,7 +146,7 @@ jobs:
         run: |
           out="$RUNNER_TEMP/update"
           mkdir -p "$out/files"
-          git diff --name-only -- meitou.lock.json '*/meitou.json' > "$out/paths.txt"
+          git diff --name-only -- meitou.lock.json Directory.Build.rsp '*/meitou.json' > "$out/paths.txt"
           while read -r path; do mkdir -p "$out/files/$(dirname "$path")"; cp "$path" "$out/files/$path"; done < "$out/paths.txt"
           cp "$RUNNER_TEMP/engine.txt" "$RUNNER_TEMP/framework-update.md" "$out/"
           echo "$OUTCOME" > "$out/outcome.txt"
@@ -183,12 +190,12 @@ jobs:
         run: |
           update="$RUNNER_TEMP/update"
           while read -r path; do
-            case "$path" in meitou.lock.json|*/meitou.json) cp "$update/files/$path" "$path" ;; *) echo "unexpected path $path" >&2; exit 1 ;; esac
+            case "$path" in meitou.lock.json|Directory.Build.rsp|*/meitou.json) cp "$update/files/$path" "$path" ;; *) echo "unexpected path $path" >&2; exit 1 ;; esac
           done < "$update/paths.txt"
           engine=$(cat "$update/engine.txt")
           [[ "$engine" =~ ^[0-9a-f]{40}$ ]] || { echo "bad engine commit" >&2; exit 1; }
           git update-index --cacheinfo "160000,$engine,engine"
-          git add meitou.lock.json $(grep '/meitou.json$' "$update/paths.txt" || true)
+          git add $(cat "$update/paths.txt")
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -F - <<< "Move the framework lock to the newest $(basename "$BRANCH") releases"$'\n\n'"$(cat "$update/framework-update.md")"
           if git fetch -q origin "$BRANCH" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD; then
