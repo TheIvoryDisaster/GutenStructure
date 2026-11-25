@@ -7,7 +7,8 @@
 # - propose (contents, pull-requests and actions: write on the caller's own GITHUB_TOKEN; runs nothing from the caller): commits those files
 #   to framework-update/<channel>, opens or updates the PR into the base branch, dispatches the caller's CI on it (a PR opened with
 #   GITHUB_TOKEN triggers no workflows), waits for it and merges when it is green and the base branch's rules allow. A failing PR stays open
-#   as the regression report. No secrets are accepted; callers must not pass secrets: inherit.
+#   as the regression report. Secrets: only app-id/app-key (the org bot App), passed by name; callers must
+#   not pass secrets: inherit.
 name: Framework update
 
 on:
@@ -51,6 +52,13 @@ on:
       tested:
         description: success or failure of the build and tests with the new lock.
         value: ${{ jobs.check.outputs.tested }}
+    secrets:
+      app-id:
+        description: The org bot GitHub App's ID. With app-key, PRs are opened with its token, so they get the caller's pull_request CI.
+        required: false
+      app-key:
+        description: The org bot GitHub App's private key.
+        required: false
 
 permissions:
   contents: read
@@ -170,16 +178,30 @@ jobs:
       pull-requests: write
       actions: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      HAS_APP: ${{ secrets.app-id != '' && secrets.app-key != '' }}
       GH_REPO: ${{ github.repository }}
       BASE: ${{ inputs.base }}
       BRANCH: framework-update/${{ inputs.channel }}
       CI_WORKFLOW: ${{ inputs.ci-workflow }}
       MERGE: ${{ inputs.merge }}
     steps:
+      - name: Mint the org bot's token
+        id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ secrets.app-id }}
+          private-key: ${{ secrets.app-key }}
+      # The bot's token opens PRs that start the caller's pull_request CI, which beta's required check counts; the workflow token's don't.
+      - name: Pick the token
+        env:
+          APP_TOKEN: ${{ steps.app.outputs.token }}
+          WORKFLOW_TOKEN: ${{ github.token }}
+        run: echo "GH_TOKEN=${APP_TOKEN:-$WORKFLOW_TOKEN}" >> "$GITHUB_ENV"
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           ref: ${{ inputs.base }}
+          token: ${{ steps.app.outputs.token || github.token }}
           persist-credentials: true
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
@@ -230,9 +252,11 @@ jobs:
         env:
           SHA: ${{ steps.commit.outputs.sha }}
         run: |
-          gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"
+          # With the bot's token the PR's own pull_request run is the one beta counts; else dispatch one.
+          event=pull_request
+          [ "$HAS_APP" = true ] || { event=workflow_dispatch; gh workflow run "$CI_WORKFLOW" --ref "$BRANCH"; }
           for _ in $(seq 30); do
-            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event workflow_dispatch --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
+            run=$(gh run list --workflow "$CI_WORKFLOW" --branch "$BRANCH" --event "$event" --commit "$SHA" --json databaseId --jq '.[0].databaseId // empty')
             [ -n "$run" ] && break
             sleep 10
           done
