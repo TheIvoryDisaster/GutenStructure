@@ -115,8 +115,9 @@ def synchronize(api, plan, apply=False):
             replacement={k:copy.deepcopy(old[k]) for k in ('name','target','enforcement','conditions')}
             replacement.update(rules=remaining,bypass_actors=[])
             operations.append(('PUT' if remaining else 'DELETE',f'repos/{repo}/rulesets/{old["id"]}',replacement if remaining else None))
-        branches=api(f'repos/{repo}/branches?per_page=100')
-        if len(branches)>=100:raise ValueError('Incomplete branch inventory')
+        # Only protected branches can carry classic protection; a busy repo has well over 100 branches in all.
+        branches=api(f'repos/{repo}/branches?protected=true&per_page=100')
+        if len(branches)>=100:raise ValueError('Incomplete protected branch inventory')
         for b in branches:
             if b.get('protected') and optional(api,f'repos/{repo}/branches/{b["name"]}/protection'):
                 raise ValueError('Classic protection requires migration to isolate review bypass from CI')
