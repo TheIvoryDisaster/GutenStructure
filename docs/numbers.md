@@ -28,6 +28,7 @@ A framework that takes a number from its dependents, such as Husbandry's `AddSki
 | 4800-4899 | `logistics.core` | Meitou-Modding-Ecosystem/LogisticsCore |
 | 4900-4999 | `animal.behaviors` | Meitou-Modding-Ecosystem/AnimalBehaviors |
 | 5000-5099 | `kenshi.races` | Meitou-Modding-Ecosystem/KenshiRaces |
+| 5100-5199 | `storage` | Meitou-Modding-Ecosystem/Storage |
 | 7300-7399 | `fiefdom` | teppuM/meitou-fiefdom |
 
 ## Rules
